@@ -1,9 +1,18 @@
-import type { AnkiCardDraft, ExtensionMessage, SegWord, SelectionRect } from '../src/types';
+import type {
+  AnkiCardDraft,
+  ExtensionMessage,
+  FlashcardTarget,
+  SegWord,
+  SelectionRect,
+} from '../src/types';
 import { analyze, cleanOcrText } from '../src/translate';
 import { getSettings, hasVoiceCreds } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
+import { sendCardToSite, sendCardsToSite } from '../src/site';
+import { getAccess, lockMessage } from '../src/access';
+import { SITE_URL } from '../src/config';
 import type { Settings } from '../src/types';
 
 const OFFSCREEN_URL = 'offscreen.html';
@@ -56,6 +65,28 @@ export default defineBackground(() => {
     return false;
   });
 
+  // --- Paywall status for the popup / options page --------------------------
+  browser.runtime.onMessage.addListener(
+    (msg: unknown, _sender, sendResponse): boolean => {
+      const message = msg as ExtensionMessage;
+      if (message.type !== 'ACCESS_CHECK') return false;
+
+      (async () => {
+        const state = await getAccess(message.force ?? false);
+        sendResponse({
+          type: 'ACCESS_INFO',
+          ok: state.ok,
+          reason: state.reason,
+          email: state.email,
+          plan: state.plan,
+          siteUrl: SITE_URL,
+        } satisfies ExtensionMessage);
+      })();
+
+      return true;
+    }
+  );
+
   browser.runtime.onMessage.addListener(
     (msg: unknown, sender, sendResponse): boolean => {
       const message = msg as ExtensionMessage;
@@ -63,6 +94,10 @@ export default defineBackground(() => {
 
       (async () => {
         try {
+          // Paywall: scanning requires an active Sori subscription.
+          const access = await getAccess();
+          if (!access.ok) throw new Error(lockMessage(access));
+
           const windowId = sender.tab?.windowId;
           if (windowId == null) throw new Error('Could not determine the active window.');
 
@@ -140,6 +175,10 @@ export default defineBackground(() => {
 
       (async () => {
         try {
+          // Paywall: text analysis requires an active Sori subscription too.
+          const access = await getAccess();
+          if (!access.ok) throw new Error(lockMessage(access));
+
           const raw = message.text;
 
           // Mirror the scan path: soft-clean (keep sentence punctuation) before
@@ -209,8 +248,11 @@ export default defineBackground(() => {
       }
 
       (async () => {
+        // Fallback for error responses if reading settings itself fails.
+        let target: FlashcardTarget = 'site';
         try {
           const settings = await getSettings();
+          target = settings.flashcardTarget;
 
           if (message.type === 'ANKI_QUEUE') {
             const queue = await getQueue();
@@ -218,6 +260,7 @@ export default defineBackground(() => {
               type: 'ANKI_QUEUE_INFO',
               count: queue.length,
               autoSend: settings.ankiAutoSend,
+              target,
             } satisfies ExtensionMessage);
             return;
           }
@@ -235,15 +278,37 @@ export default defineBackground(() => {
               addedAt: Date.now(),
             };
 
-            // Auto-send mode: push straight into Anki; if that fails, keep the
-            // card in the queue so it's never lost.
+            // Website destination (default): save straight to the Sori deck.
+            // On failure the card stays in the queue so it's never lost.
+            if (target === 'site') {
+              try {
+                const access = await getAccess();
+                if (!access.ok) throw new Error(lockMessage(access));
+                await sendCardToSite(settings.siteToken.trim(), card);
+                sendResponse({
+                  type: 'ANKI_ADD_DONE', ok: true, queued: (await getQueue()).length,
+                  sentNow: true, target,
+                } satisfies ExtensionMessage);
+              } catch (e) {
+                const queue = [...(await getQueue()), card];
+                await setQueue(queue);
+                sendResponse({
+                  type: 'ANKI_ADD_DONE', ok: false, queued: queue.length, sentNow: false,
+                  target, message: `Kept in queue — saving to Sori failed: ${describe(e)}`,
+                } satisfies ExtensionMessage);
+              }
+              return;
+            }
+
+            // Anki auto-send mode: push straight into Anki; if that fails,
+            // keep the card in the queue so it's never lost.
             if (settings.ankiAutoSend) {
               try {
                 const r = await sendCardsToAnki(settings, [card], (t) => audioOrNull(t, settings));
                 if (r.addedIds.length > 0) {
                   const queue = await getQueue();
                   sendResponse({
-                    type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: true,
+                    type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: true, target,
                   } satisfies ExtensionMessage);
                   return;
                 }
@@ -253,7 +318,7 @@ export default defineBackground(() => {
                 await setQueue(queue);
                 sendResponse({
                   type: 'ANKI_ADD_DONE', ok: false, queued: queue.length, sentNow: false,
-                  message: `Kept in queue — Anki send failed: ${describe(e)}`,
+                  target, message: `Kept in queue — Anki send failed: ${describe(e)}`,
                 } satisfies ExtensionMessage);
                 return;
               }
@@ -262,20 +327,27 @@ export default defineBackground(() => {
             const queue = [...(await getQueue()), card];
             await setQueue(queue);
             sendResponse({
-              type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: false,
+              type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: false, target,
             } satisfies ExtensionMessage);
             return;
           }
 
-          // ANKI_SEND_ALL
+          // ANKI_SEND_ALL — flush the queue to the configured destination.
           const queue = await getQueue();
           if (queue.length === 0) {
             sendResponse({
-              type: 'ANKI_SEND_ALL_DONE', ok: true, added: 0, failed: 0, remaining: 0,
+              type: 'ANKI_SEND_ALL_DONE', ok: true, added: 0, failed: 0, remaining: 0, target,
             } satisfies ExtensionMessage);
             return;
           }
-          const result = await sendCardsToAnki(settings, queue, (t) => audioOrNull(t, settings));
+          if (target === 'site') {
+            const access = await getAccess();
+            if (!access.ok) throw new Error(lockMessage(access));
+          }
+          const result =
+            target === 'site'
+              ? await sendCardsToSite(settings.siteToken.trim(), queue)
+              : await sendCardsToAnki(settings, queue, (t) => audioOrNull(t, settings));
           const remaining = queue.filter((c) => !result.addedIds.includes(c.id));
           await setQueue(remaining);
           sendResponse({
@@ -284,25 +356,28 @@ export default defineBackground(() => {
             added: result.addedIds.length,
             failed: result.failed,
             remaining: remaining.length,
+            target,
             message: result.failures[0],
           } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Korean Reader] Anki op failed:', e);
+          console.error('[Korean Reader] flashcard op failed:', e);
           if (message.type === 'ANKI_SEND_ALL') {
             const queue = await getQueue();
             sendResponse({
               type: 'ANKI_SEND_ALL_DONE', ok: false, added: 0, failed: queue.length,
-              remaining: queue.length, message: describe(e),
+              remaining: queue.length, target, message: describe(e),
             } satisfies ExtensionMessage);
           } else if (message.type === 'ANKI_ADD') {
             sendResponse({
               type: 'ANKI_ADD_DONE', ok: false, queued: (await getQueue()).length,
-              sentNow: false, message: describe(e),
+              sentNow: false, target, message: describe(e),
             } satisfies ExtensionMessage);
           } else if (message.type === 'ANKI_CLEAR') {
             sendResponse({ type: 'ANKI_CLEAR_DONE', ok: false } satisfies ExtensionMessage);
           } else {
-            sendResponse({ type: 'ANKI_QUEUE_INFO', count: 0, autoSend: false } satisfies ExtensionMessage);
+            sendResponse({
+              type: 'ANKI_QUEUE_INFO', count: 0, autoSend: false, target,
+            } satisfies ExtensionMessage);
           }
         }
       })();

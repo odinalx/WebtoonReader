@@ -1,11 +1,40 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ExtensionMessage } from '../../src/types';
 
 type Status = 'idle' | 'activating' | 'error';
 
+interface AccessView {
+  ok: boolean;
+  reason?: string;
+  email?: string;
+  plan?: string;
+  siteUrl: string;
+}
+
 export function App() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+  // null = still checking; the scan button stays enabled meanwhile so a warm
+  // cache never blocks a paying user.
+  const [access, setAccess] = useState<AccessView | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = (await browser.runtime.sendMessage({
+          type: 'ACCESS_CHECK',
+        } satisfies ExtensionMessage)) as ExtensionMessage | undefined;
+        if (resp && resp.type === 'ACCESS_INFO') {
+          setAccess({
+            ok: resp.ok, reason: resp.reason, email: resp.email,
+            plan: resp.plan, siteUrl: resp.siteUrl,
+          });
+        }
+      } catch {
+        /* background not ready — leave the button usable; scans re-check anyway */
+      }
+    })();
+  }, []);
 
   const startScan = async () => {
     setStatus('activating');
@@ -39,6 +68,36 @@ export function App() {
       <h1 className="title">Korean Reader</h1>
       <p className="sub">Scan a webtoon speech bubble — or select any Korean text and right-click "Analyze with Korean Reader".</p>
 
+      {access && !access.ok ? (
+        <div className="paywall">
+          <div className="paywall-title">🔒 Subscription required</div>
+          <p className="paywall-text">
+            {access.reason === 'no-token' &&
+              'Korean Reader now works with a Sori account. Subscribe on the website, then paste your access token in the settings.'}
+            {access.reason === 'invalid-token' &&
+              'Your access token was rejected. Create a new one on your Sori account page.'}
+            {access.reason === 'not-subscribed' &&
+              `${access.email ? access.email + ' has' : 'Your account has'} no active plan. Subscribe to unlock the extension.`}
+            {access.reason === 'offline' &&
+              'Could not reach the Sori site to verify your subscription. Check your connection.'}
+          </p>
+          <div className="paywall-actions">
+            <button
+              className="scan-btn"
+              onClick={() => browser.tabs.create({
+                url: access.reason === 'invalid-token'
+                  ? `${access.siteUrl}/account`
+                  : `${access.siteUrl}/pricing`,
+              })}
+            >
+              Open Sori website
+            </button>
+            <button className="settings-link" onClick={() => browser.runtime.openOptionsPage()}>
+              Enter access token…
+            </button>
+          </div>
+        </div>
+      ) : (
       <button
         className="scan-btn"
         onClick={startScan}
@@ -56,6 +115,7 @@ export function App() {
           </>
         )}
       </button>
+      )}
 
       {status === 'error' && <div className="error">{error}</div>}
 

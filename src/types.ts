@@ -6,8 +6,15 @@ export interface SelectionRect {
   devicePixelRatio: number;
 }
 
-// Naver Cloud credentials (Clova Voice) + Anki.
+// Where "Add to flashcards" sends cards: the Sori website deck (default) or
+// desktop Anki via AnkiConnect.
+export type FlashcardTarget = 'site' | 'anki';
+
+// Sori account + Naver Cloud credentials (Clova Voice) + Anki.
 export interface Settings {
+  // Sori website (subscription + built-in flashcards).
+  siteToken: string;      // personal API token ("sori_…") created on /account
+  flashcardTarget: FlashcardTarget;
   voiceApiKeyId: string;  // Clova Voice X-NCP-APIGW-API-KEY-ID
   voiceApiKey: string;    // Clova Voice X-NCP-APIGW-API-KEY
   voiceSpeaker: string;   // e.g. "nara"
@@ -18,6 +25,8 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  siteToken: '',
+  flashcardTarget: 'site',
   voiceApiKeyId: '',
   voiceApiKey: '',
   voiceSpeaker: 'nara',
@@ -37,6 +46,7 @@ export interface AnkiCardDraft {
   infinitive?: string;         // dictionary form for verbs/adjectives
   sentence: string;            // the scanned sentence (example)
   sentenceTranslation: string; // its translation
+  source?: string;             // where the word was captured (page hostname)
   addedAt: number;             // timestamp
 }
 
@@ -168,7 +178,23 @@ export interface TtsPlay {
   audioDataUrl: string;
 }
 
-// content -> background: queue a card (auto-sends to Anki if that's enabled)
+// popup/options -> background: is the extension unlocked (valid token + active
+// subscription on the Sori website)? `force` bypasses the cached check.
+export interface AccessCheckRequest {
+  type: 'ACCESS_CHECK';
+  force?: boolean;
+}
+export interface AccessInfo {
+  type: 'ACCESS_INFO';
+  ok: boolean;
+  reason?: 'no-token' | 'invalid-token' | 'not-subscribed' | 'offline';
+  email?: string;
+  plan?: string;
+  siteUrl: string; // site origin, for "open the website" links
+}
+
+// content -> background: queue a card (sends straight to the website/Anki when
+// the destination is the site or Anki auto-send is on)
 export interface AnkiAddRequest {
   type: 'ANKI_ADD';
   card: Omit<AnkiCardDraft, 'id' | 'addedAt'>;
@@ -177,11 +203,12 @@ export interface AnkiAddDone {
   type: 'ANKI_ADD_DONE';
   ok: boolean;
   queued: number;   // queue size after the operation
-  sentNow: boolean; // true if it went straight into Anki (auto-send)
+  sentNow: boolean; // true if it went straight to the destination
+  target: FlashcardTarget;
   message?: string;
 }
 
-// content/popup -> background: flush the whole queue into Anki
+// content/popup -> background: flush the whole queue to the destination
 export interface AnkiSendAllRequest {
   type: 'ANKI_SEND_ALL';
 }
@@ -191,6 +218,7 @@ export interface AnkiSendAllDone {
   added: number;
   failed: number;
   remaining: number; // cards still queued (the failures)
+  target: FlashcardTarget;
   message?: string;
 }
 
@@ -202,6 +230,7 @@ export interface AnkiQueueInfo {
   type: 'ANKI_QUEUE_INFO';
   count: number;
   autoSend: boolean;
+  target: FlashcardTarget;
 }
 
 // content/popup -> background: empty the queue
@@ -214,6 +243,8 @@ export interface AnkiClearDone {
 }
 
 export type ExtensionMessage =
+  | AccessCheckRequest
+  | AccessInfo
   | ActivateScan
   | AnalyzeSelection
   | AnalyzeTextRequest

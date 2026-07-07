@@ -6,3 +6,4 @@ dist/
 public/tesseract/
 public/kiwi/
 public/kiwi-sandbox.js
+.env

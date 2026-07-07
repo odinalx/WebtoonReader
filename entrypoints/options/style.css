@@ -52,6 +52,8 @@ h2 { font-size: 15px; }
 .badge.on { background: var(--wkr-green-soft); color: var(--wkr-green-strong); }
 
 .hint { font-size: 12px; color: var(--wkr-muted); }
+.warn-hint { color: var(--wkr-error); }
+.warn-hint a { color: var(--wkr-error); font-weight: 600; }
 .hint strong { color: var(--wkr-text); }
 .hint em { color: var(--wkr-green-strong); font-style: normal; }
 .hint a, .field-hint a { color: var(--wkr-green-strong); }

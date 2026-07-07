@@ -1,4 +1,22 @@
 import { defineConfig } from 'wxt';
+import { readFileSync } from 'node:fs';
+
+// The site origin must be a compile-time host permission, and this config file
+// runs before WXT exposes .env values — so read it ourselves:
+// process.env → .env file → localhost fallback. Keep in sync with
+// src/config.ts, which reads the same variable via import.meta.env.
+function siteOrigin(): string {
+  let url = process.env.WXT_SITE_URL;
+  if (!url) {
+    try {
+      const env = readFileSync(new URL('.env', import.meta.url), 'utf8');
+      url = /^WXT_SITE_URL=(.+)$/m.exec(env)?.[1]?.trim();
+    } catch {
+      // no .env file — use the fallback
+    }
+  }
+  return new URL(url || 'http://localhost:3000').origin;
+}
 
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
@@ -28,6 +46,8 @@ export default defineConfig({
       'https://dict-dn.pstatic.net/*',
       'http://127.0.0.1:8765/*',
       'http://localhost:8765/*',
+      // Sori website API (account check + saving flashcards).
+      `${siteOrigin()}/*`,
     ],
     web_accessible_resources: [
       {

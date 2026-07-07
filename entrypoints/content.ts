@@ -398,45 +398,54 @@ function renderResults(shadow: ShadowRoot, analysis: AnalysisResult) {
 }
 
 // ---------------------------------------------------------------------------
-// Anki queue UI (footer bar of the result panel)
+// Flashcard queue UI (footer bar of the result panel)
 // ---------------------------------------------------------------------------
+
+// Human name of the current destination ('site' → Sori, 'anki' → Anki).
+function targetName(target: string | undefined): string {
+  return target === 'anki' ? 'Anki' : 'Sori';
+}
 
 async function updateAnkiBar(shadow: ShadowRoot) {
   const bar = shadow.querySelector('.anki-bar') as HTMLElement | null;
   if (!bar) return;
 
   let count = 0;
+  let target: string | undefined;
   try {
     const info = (await browser.runtime.sendMessage({
       type: 'ANKI_QUEUE',
     } satisfies ExtensionMessage)) as ExtensionMessage | undefined;
-    if (info && info.type === 'ANKI_QUEUE_INFO') count = info.count;
+    if (info && info.type === 'ANKI_QUEUE_INFO') {
+      count = info.count;
+      target = info.target;
+    }
   } catch {
     /* background not ready — show empty bar */
   }
 
   if (count === 0) {
-    bar.innerHTML = `<span class="anki-count muted">No cards in the Anki queue yet</span>`;
+    bar.innerHTML = `<span class="anki-count muted">No cards queued yet</span>`;
     return;
   }
 
   bar.innerHTML = `
     <span class="anki-count">${count} card${count > 1 ? 's' : ''} queued</span>
     <div class="anki-actions">
-      <button class="btn-row anki-send">${ICON.send}<span>Send all to Anki</span></button>
+      <button class="btn-row anki-send">${ICON.send}<span>Send all to ${targetName(target)}</span></button>
       <button class="anki-clear" title="Clear queue">${ICON.close}</button>
     </div>`;
-  bar.querySelector('.anki-send')!.addEventListener('click', () => sendAllToAnki(shadow));
+  bar.querySelector('.anki-send')!.addEventListener('click', () => sendAllCards(shadow));
   bar.querySelector('.anki-clear')!.addEventListener('click', async () => {
     await browser.runtime.sendMessage({ type: 'ANKI_CLEAR' } satisfies ExtensionMessage).catch(() => {});
     void updateAnkiBar(shadow);
   });
 }
 
-async function sendAllToAnki(shadow: ShadowRoot) {
+async function sendAllCards(shadow: ShadowRoot) {
   const bar = shadow.querySelector('.anki-bar') as HTMLElement | null;
   if (!bar) return;
-  bar.innerHTML = `<span class="anki-count muted">Sending to Anki…</span>`;
+  bar.innerHTML = `<span class="anki-count muted">Sending…</span>`;
 
   let resp: ExtensionMessage | undefined;
   try {
@@ -453,13 +462,18 @@ async function sendAllToAnki(shadow: ShadowRoot) {
     return;
   }
 
+  const dest = targetName(resp.target);
   if (resp.ok && resp.failed === 0) {
-    bar.innerHTML = `<span class="anki-count ok">✓ Sent ${resp.added} card${resp.added > 1 ? 's' : ''} to Anki</span>`;
+    bar.innerHTML = `<span class="anki-count ok">✓ Sent ${resp.added} card${resp.added > 1 ? 's' : ''} to ${dest}</span>`;
   } else if (resp.added > 0) {
     bar.innerHTML = `<span class="anki-count warn">Sent ${resp.added}, ${resp.failed} failed — ${resp.remaining} still queued.</span>`;
     setTimeout(() => void updateAnkiBar(shadow), 3000);
   } else {
-    const why = resp.message || 'Could not reach Anki. Open it with the AnkiConnect add-on.';
+    const why =
+      resp.message ||
+      (resp.target === 'anki'
+        ? 'Could not reach Anki. Open it with the AnkiConnect add-on.'
+        : 'Could not reach Sori. Check your connection and token.');
     bar.innerHTML = `<span class="anki-count warn">${esc(why)}</span>`;
     setTimeout(() => void updateAnkiBar(shadow), 4000);
   }
@@ -548,6 +562,7 @@ function showWordPopover(shadow: ShadowRoot, anchor: HTMLElement, info: WordInfo
       infinitive: info.infinitive,
       sentence: currentAnalysis?.text || '',
       sentenceTranslation: currentAnalysis?.sentenceTranslation || '',
+      source: location.hostname,
     };
     let resp: ExtensionMessage | undefined;
     try {
@@ -559,7 +574,7 @@ function showWordPopover(shadow: ShadowRoot, anchor: HTMLElement, info: WordInfo
     }
     if (resp && resp.type === 'ANKI_ADD_DONE' && resp.ok) {
       ankiBtn.classList.add('done');
-      ankiLabel.textContent = resp.sentNow ? 'Sent to Anki ✓' : 'Queued ✓';
+      ankiLabel.textContent = resp.sentNow ? `Saved to ${targetName(resp.target)} ✓` : 'Queued ✓';
     } else {
       ankiBtn.classList.add('warn');
       ankiLabel.textContent =
