@@ -3,12 +3,18 @@
 A Chrome/Chromium extension that turns any Korean webtoon panel into a study tool.
 Drag-select a speech bubble and it will:
 
-- **OCR** the Korean text (bundled Tesseract `best` model — works fully offline, no API keys),
+- **OCR** the Korean text (bundled Tesseract `best` model — runs offline on your machine, no API keys),
 - **translate** the sentence and break it into words **colored by part of speech**,
 - give each word a **pronunciation** (audio), meanings, dictionary form, and **Naver dictionary** links,
-- let you **send words to Anki** as richly-formatted cards (word + audio + example sentence + audio), via the AnkiConnect add-on.
+- let you **save words to your Sori deck** (default) or **send them to Anki** as richly-formatted
+  cards (word + audio + example sentence + audio), via the AnkiConnect add-on.
 
-Everything works free and locally — no account, no paid services.
+> **Requires a Sori subscription.** The extension unlocks against a personal access token
+> from your [Sori](../WebtoonReader_Websites) account — it calls `GET /api/me` to confirm the
+> token is valid and the account is subscribed before it will scan. Create an account,
+> subscribe, and generate a token on `/account`, then paste it into the extension's Settings.
+> (OCR, translation, and dictionary lookups still run locally/against public endpoints — the
+> subscription is the gate, not a per-scan service.)
 
 ---
 
@@ -36,11 +42,16 @@ bridges that gap: you draw a box over a speech bubble and it reads the Korean ou
 of the picture, explains it, and turns the words you care about into flashcards —
 without ever leaving the page.
 
-It's built to be **free and self-contained**. The OCR engine and its Korean
-language model are bundled in the extension, so recognition happens on your own
-machine with no API keys and no network round-trip. Translation, pronunciation,
-and dictionary lookups use public endpoints. An optional paid upgrade (Naver
-Cloud) exists but is off by default.
+It's built to be **self-contained on the recognition side**. The OCR engine and
+its Korean language model are bundled in the extension, so recognition happens on
+your own machine with no API keys and no network round-trip. Translation,
+pronunciation, and dictionary lookups use public endpoints. An optional paid
+upgrade (Naver Cloud) exists but is off by default.
+
+Access is gated by a **Sori subscription**: the extension verifies your account
+token against the [Sori website](../WebtoonReader_Websites) before scanning, and
+saves captured words to your Sori deck (with Anki as an alternative destination).
+See [Connecting your Sori account](#connecting-your-sori-account-required) below.
 
 ---
 
@@ -120,6 +131,23 @@ extension's card in `chrome://extensions`.
 
 ---
 
+## Connecting your Sori account (required)
+
+The extension is subscription-gated and won't scan until it's linked to a
+subscribed [Sori](../WebtoonReader_Websites) account:
+
+1. Create an account on the Sori site and **subscribe** (`/pricing`).
+2. Go to **`/account`** and generate a personal access token (`sori_…`). It's
+   shown once — copy it.
+3. Open the extension's **Settings** page (button in the popup) and paste the
+   token. The extension calls `GET /api/me` to confirm the token is valid and the
+   account is subscribed; the verdict is cached (with a short offline grace
+   period) so it doesn't re-check on every scan.
+
+Captured words are saved to your **Sori deck** by default (`POST /api/cards`);
+choose **Anki** instead in Settings if you prefer local flashcards (see
+[Anki setup](#anki-setup-one-time)).
+
 ## How to use
 
 1. **Open a webtoon page** (e.g. comic.naver.com). Chrome can't screenshot
@@ -132,17 +160,21 @@ extension's card in `chrome://extensions`.
    translation** for the English, and **Speak phrase** to hear it.
 5. **Click any word** for a popover: meaning, POS tag, dictionary form (for
    verbs/adjectives), a pronounce button, and a Naver dictionary link.
-6. **Build flashcards.** Click **Add to Anki** on a word — it joins a session
-   queue (the panel shows the count). Keep scanning and adding; when you're done,
-   hit **Send all to Anki** to push the whole batch at once. (Or enable
-   "send each card immediately" in Settings.)
+6. **Build flashcards.** Click **Add to flashcards** on a word — it joins a
+   session queue (the panel shows the count). Keep scanning and adding; when
+   you're done, hit **Send all** to push the whole batch to your chosen
+   destination (your Sori deck by default, or Anki). (Or enable "send each card
+   immediately" in Settings.)
 7. **Scan again** without reopening the popup using the button in the panel.
 
 ---
 
-## Anki setup (one time)
+## Anki setup (one time, optional)
 
-Cards are delivered through the [**AnkiConnect**](https://ankiweb.net/shared/info/2055492159) add-on.
+Anki is the **alternative** flashcard destination — skip this section if you're
+saving to your Sori deck (the default). To send to Anki instead, pick it in
+Settings; cards are delivered through the
+[**AnkiConnect**](https://ankiweb.net/shared/info/2055492159) add-on.
 
 1. In desktop Anki, install AnkiConnect (Tools → Add-ons → Get Add-ons → code `2055492159`) and restart.
 2. Open the extension's **Settings** page (button in the popup). It shows the exact
@@ -178,7 +210,8 @@ optional "send immediately" toggle in Settings.
 | Translation & POS | Google Translate (unofficial endpoint) | Sentence translation + per-word dictionary/part-of-speech |
 | Pronunciation | Naver dict audio → Clova Voice (optional) → Google TTS | Played from the offscreen document; embedded in Anki cards |
 | Dictionary | Naver / Daum / NIKL KRDict deep links | |
-| Flashcards | [AnkiConnect](https://foosoft.net/projects/anki-connect/) | Auto-creates the note type, stores audio media, adds notes |
+| Account / paywall | [Sori website](../WebtoonReader_Websites) API (`GET /api/me`) | Subscription-gated; token created on `/account` |
+| Flashcards | Sori deck (`POST /api/cards`, default) or [AnkiConnect](https://foosoft.net/projects/anki-connect/) | Anki path auto-creates the note type, stores audio media, adds notes |
 | Optional | Naver Cloud (CLOVA OCR + Clova Voice) | Paid, hidden by default |
 
 **Architecture at a glance:**
