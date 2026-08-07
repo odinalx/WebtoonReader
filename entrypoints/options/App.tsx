@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS, type ExtensionMessage, type Settings } from '../../src/types';
 import { getSettings, saveSettings, hasVoiceCreds } from '../../src/settings';
+import { fetchDecks, type SiteDeck } from '../../src/site';
 import { SITE_URL } from '../../src/config';
 
 interface AccessView {
@@ -15,9 +16,15 @@ export function App() {
   const [saved, setSaved] = useState(false);
   const [access, setAccess] = useState<AccessView | null>(null);
   const [checking, setChecking] = useState(false);
+  // The token as stored, not as typed: the deck list is fetched with it, and
+  // refetching on every keystroke of a half-pasted token is pointless traffic.
+  const [savedToken, setSavedToken] = useState('');
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    getSettings().then((s) => {
+      setSettings(s);
+      setSavedToken(s.siteToken);
+    });
     void refreshAccess(false);
   }, []);
 
@@ -44,6 +51,7 @@ export function App() {
   const onSave = async () => {
     await saveSettings(settings);
     setSaved(true);
+    setSavedToken(settings.siteToken);
     // Re-verify with the (possibly new) token so the status badge is honest.
     void refreshAccess(true);
   };
@@ -118,6 +126,14 @@ export function App() {
           />
           <strong>Anki desktop</strong> — send cards to Anki via the AnkiConnect add-on.
         </label>
+
+        {settings.flashcardTarget === 'site' && (
+          <DeckPicker
+            token={savedToken}
+            value={settings.soriDeckId}
+            onChange={(soriDeckId) => update({ soriDeckId })}
+          />
+        )}
       </section>
 
       {settings.flashcardTarget === 'anki' && (
@@ -239,6 +255,91 @@ function AccessBadge({ access, checking }: { access: AccessView | null; checking
     );
   }
   return <span className="badge">locked</span>;
+}
+
+/**
+ * Which Sori deck captured words land in.
+ *
+ * The decks are the site's, so they're fetched rather than typed — a name typed
+ * here would create nothing and file words nowhere. The list reloads whenever
+ * the saved token changes, since without a valid token there is nothing to ask.
+ */
+function DeckPicker({
+  token,
+  value,
+  onChange,
+}: {
+  token: string;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [decks, setDecks] = useState<SiteDeck[] | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    const clean = token.trim();
+    if (!clean) {
+      setDecks(null);
+      setError('');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      setDecks(await fetchDecks(clean));
+    } catch (e) {
+      setDecks(null);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setLoading(false);
+  }, [token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // A deck deleted on the site would otherwise fail silently — the server falls
+  // back to the first deck, and words would quietly pile up somewhere else.
+  const missing = Boolean(value) && decks !== null && !decks.some((d) => d.id === value);
+
+  return (
+    <label>
+      Deck
+      <select
+        value={missing ? '' : value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={loading || decks === null}
+      >
+        <option value="">
+          {decks === null ? 'Connect your account first' : 'First deck (default)'}
+        </option>
+        {(decks ?? []).map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.name} ({d.count})
+          </option>
+        ))}
+      </select>
+      <span className="field-hint">
+        {error
+          ? `Could not load your decks: ${error}`
+          : missing
+            ? 'The deck you picked no longer exists — words go to your first deck until you choose another.'
+            : (
+              <>
+                Create and rename decks on{' '}
+                <a href={`${SITE_URL}/deck`} target="_blank" rel="noreferrer">
+                  your deck page
+                </a>
+                .{' '}
+                <button type="button" className="linkish" onClick={() => void load()}>
+                  Reload
+                </button>
+              </>
+            )}
+      </span>
+    </label>
+  );
 }
 
 const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;

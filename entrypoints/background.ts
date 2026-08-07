@@ -254,7 +254,7 @@ export default defineBackground(() => {
               try {
                 const access = await getAccess();
                 if (!access.ok) throw new Error(lockMessage(access));
-                await sendCardToSite(settings.siteToken.trim(), card);
+                await sendCardToSite(settings.siteToken.trim(), card, settings.soriDeckId);
                 sendResponse({
                   type: 'ANKI_ADD_DONE', ok: true, queued: (await getQueue()).length,
                   sentNow: true, target,
@@ -316,7 +316,7 @@ export default defineBackground(() => {
           }
           const result =
             target === 'site'
-              ? await sendCardsToSite(settings.siteToken.trim(), queue)
+              ? await sendCardsToSite(settings.siteToken.trim(), queue, settings.soriDeckId)
               : await sendCardsToAnki(settings, queue, (t) => audioOrNull(t, settings));
           const remaining = queue.filter((c) => !result.addedIds.includes(c.id));
           await setQueue(remaining);
