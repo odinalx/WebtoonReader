@@ -15,7 +15,21 @@ function siteOrigin(): string {
       // no .env file — use the fallback
     }
   }
-  return new URL(url || 'http://localhost:3000').origin;
+  const origin = new URL(url || 'http://localhost:3000').origin;
+
+  // The origin is baked into the bundle AND into host_permissions, so a release
+  // that kept the committed localhost default would ship an extension talking
+  // to the user's own machine — failing silently, with no permission to reach
+  // the real site. `npm run zip` sets SORI_RELEASE, so the check guards the
+  // distributable without breaking `npm run build` against a local server.
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(origin);
+  if (isLocal && process.env.SORI_RELEASE) {
+    throw new Error(
+      `WXT_SITE_URL is ${origin} but this is a release build. ` +
+        'Set WXT_SITE_URL to the real site origin (https://…) and rebuild.'
+    );
+  }
+  return origin;
 }
 
 export default defineConfig({
