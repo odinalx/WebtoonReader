@@ -44,9 +44,10 @@ without ever leaving the page.
 
 It's built to be **self-contained on the recognition side**. The OCR engine and
 its Korean language model are bundled in the extension, so recognition happens on
-your own machine with no API keys and no network round-trip. Translation,
-pronunciation, and dictionary lookups use public endpoints. An optional paid
-upgrade (Naver Cloud) exists but is off by default.
+your own machine with no API keys and no network round-trip. Word segmentation,
+translation, and part-of-speech tagging run on the Sori server (shared with the
+mobile app); pronunciation and dictionary lookups use public endpoints. An
+optional paid upgrade (Naver Cloud) exists but is off by default.
 
 Access is gated by a **Sori subscription**: the extension verifies your account
 token against the [Sori website](../WebtoonReader_Websites) before scanning, and
@@ -72,12 +73,21 @@ A scan flows through four stages:
    allowed — and the worker, wasm core, and language data are all bundled locally
    so strict site CSPs can't block them.
 
-3. **Translation & grammar (background).** The recognized text is cleaned of OCR
-   artifacts, translated as a whole sentence, and split into words. Each word is
-   looked up for its English meaning, **part of speech**, and dictionary form.
+3. **Translation & grammar (Sori server).** The recognized text is `POST`ed to
+   `/api/analyze`, which cleans OCR artifacts, splits the text into word-units
+   with the Kiwi morphological analyzer, translates the sentence, and looks each
+   word up for its English meaning, **part of speech**, and dictionary form.
    Conjugated/particle-attached forms are normalized (e.g. a trailing particle is
    stripped, and `-기` nominalized verbs like 보호하기 are traced back to 보호하다)
    so they classify correctly instead of falling through as "unknown".
+
+   This used to run locally, with Kiwi's wasm in a sandboxed iframe — its
+   Emscripten glue JITs bindings via `new Function(...)`, which only a sandboxed
+   page's CSP permits — and an ~84 MB model shipped inside every install. Moving
+   it to the server means the extension and the [mobile app](https://github.com/odinalx/SoriApp)
+   share one implementation, and the extension is ~85 MB lighter. The trade-off
+   is that analysis now needs a connection; **OCR stays local**, so it still
+   works offline up to this point.
 
 4. **Render & study (content script).** Results appear in a draggable panel: the
    sentence as flowing, color-coded words; a toggleable translation; a "speak"
@@ -111,7 +121,9 @@ neutral grey:
 5. Click **Load unpacked** and select the unzipped folder.
 6. Pin the **W** icon from the toolbar's puzzle-piece menu.
 
-> The zip already contains the OCR model, so the extension works offline right after loading.
+> The zip already contains the OCR model, so recognition needs no download and no
+> network. Analysis (words, translation, grammar) calls the Sori API, so that
+> step needs a connection.
 
 ### Option B — Build from source
 
@@ -207,7 +219,7 @@ optional "send immediately" toggle in Settings.
 | Language | TypeScript | |
 | UI | React (popup & options) + vanilla DOM in a Shadow DOM (in-page panel) | Shadow DOM isolates the panel from page styles |
 | OCR | [Tesseract.js](https://github.com/naptha/tesseract.js) v5, `kor` `best` model | Runs in an **offscreen document**; worker + wasm + model bundled locally |
-| Translation & POS | Google Translate (unofficial endpoint) | Sentence translation + per-word dictionary/part-of-speech |
+| Segmentation, translation & POS | [Sori website](../WebtoonReader_Websites) API (`POST /api/analyze`) | Kiwi word-units + sentence translation + per-word dictionary/part-of-speech, shared with the mobile app |
 | Pronunciation | Naver dict audio → Clova Voice (optional) → Google TTS | Played from the offscreen document; embedded in Anki cards |
 | Dictionary | Naver / Daum / NIKL KRDict deep links | |
 | Account / paywall | [Sori website](../WebtoonReader_Websites) API (`GET /api/me`) | Subscription-gated; token created on `/account` |

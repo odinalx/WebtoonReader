@@ -26,20 +26,15 @@ export default defineConfig({
     version: '0.1.1',
     // Tesseract compiles a .wasm core; MV3's default CSP (script-src 'self')
     // blocks WebAssembly.instantiate. 'wasm-unsafe-eval' re-allows it.
-    // Kiwi's Emscripten/Embind glue additionally JITs binding functions via
-    // `new Function(...)`, which needs 'unsafe-eval' — forbidden on extension
-    // pages but allowed on a SANDBOXED page, so Kiwi runs in kiwi-sandbox.html
-    // (a static page bundled to public/ by scripts/bundle-sandbox.mjs, served
-    // from the extension origin so it's identical in dev and production).
+    // (The sandbox entry that used to sit here existed only for Kiwi, whose
+    // Emscripten glue needs 'unsafe-eval'. Segmentation now runs on the Sori
+    // server, so neither the sandbox nor that CSP relaxation is needed.)
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
-      sandbox:
-        "sandbox allow-scripts; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; object-src 'self';",
     },
-    sandbox: { pages: ['kiwi-sandbox.html'] },
     permissions: ['activeTab', 'scripting', 'storage', 'tabs', 'offscreen', 'contextMenus'],
     host_permissions: [
-      'https://translate.googleapis.com/*',
+      // Google TTS fallback only — translation itself moved to the Sori server.
       'https://translate.google.com/*',
       'https://*.apigw.ntruss.com/*',
       'https://ko.dict.naver.com/*',
@@ -53,11 +48,6 @@ export default defineConfig({
       {
         // Worker + core wasm must be reachable from the extension origin.
         resources: ['tesseract/*'],
-        matches: ['<all_urls>'],
-      },
-      {
-        // Kiwi wasm + model files, loaded by the offscreen document.
-        resources: ['kiwi/*'],
         matches: ['<all_urls>'],
       },
     ],

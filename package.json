@@ -3,14 +3,12 @@
   "version": "0.1.1",
   "type": "module",
   "scripts": {
-    "postinstall": "node scripts/copy-assets.mjs && node scripts/bundle-sandbox.mjs && wxt prepare",
-    "bundle:sandbox": "node scripts/bundle-sandbox.mjs",
-    "dev": "npm run bundle:sandbox && wxt",
-    "build": "npm run bundle:sandbox && wxt build",
-    "zip": "npm run bundle:sandbox && wxt zip"
+    "postinstall": "node scripts/copy-assets.mjs && wxt prepare",
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip"
   },
   "dependencies": {
-    "kiwi-nlp": "^0.23.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tesseract.js": "^5.1.0"

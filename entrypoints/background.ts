@@ -1,16 +1,15 @@
 import type {
+  AnalysisResult,
   AnkiCardDraft,
   ExtensionMessage,
   FlashcardTarget,
-  SegWord,
   SelectionRect,
 } from '../src/types';
-import { analyze, cleanOcrText } from '../src/translate';
 import { getSettings, hasVoiceCreds } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
-import { sendCardToSite, sendCardsToSite } from '../src/site';
+import { analyzeOnSite, sendCardToSite, sendCardsToSite } from '../src/site';
 import { getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
 import type { Settings } from '../src/types';
@@ -137,24 +136,9 @@ export default defineBackground(() => {
             throw new Error(`OCR failed: ${describe(e)}`);
           }
 
-          // Clean OCR garbage BEFORE segmenting (drops underscores, unmatched
-          // brackets, stray symbols like `/`) but KEEP sentence punctuation
-          // (commas/quotes) so Kiwi's surfaces carry it through to the
-          // translation. analyze() strict-cleans each surface for the chips.
-          const soft = text ? cleanOcrText(text, { keepPunct: true }) : '';
-
-          // --- Word segmentation (Kiwi) — splits spaceless runs into words ---
+          // --- Segmentation + translation + grammar (Sori server) ---
           report('analyzing words', 0.8);
-          const words = soft ? await segment(soft) : null;
-
-          // --- Translation + grammar ---
-          report('translating', 0.85);
-          const analysis = soft
-            ? await analyze(text, words ?? undefined).catch((e) => {
-                console.error('[Korean Reader] analysis failed:', e);
-                return { text: cleanOcrText(text), sentenceTranslation: '', tone: '', words: [] };
-              })
-            : { text: '', sentenceTranslation: '', tone: '', words: [] };
+          const analysis = await analyzeText(text);
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
@@ -179,22 +163,8 @@ export default defineBackground(() => {
           const access = await getAccess();
           if (!access.ok) throw new Error(lockMessage(access));
 
-          const raw = message.text;
-
-          // Mirror the scan path: soft-clean (keep sentence punctuation) before
-          // segmenting; analyze() strict-cleans each surface for the chips.
-          const soft = raw ? cleanOcrText(raw, { keepPunct: true }) : '';
-
           report('analyzing words', 0.8);
-          const words = soft ? await segment(soft) : null;
-
-          report('translating', 0.85);
-          const analysis = soft
-            ? await analyze(raw, words ?? undefined).catch((e) => {
-                console.error('[Korean Reader] analysis failed:', e);
-                return { text: cleanOcrText(raw), sentenceTranslation: '', tone: '', words: [] };
-              })
-            : { text: '', sentenceTranslation: '', tone: '', words: [] };
+          const analysis = await analyzeText(message.text);
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
@@ -436,29 +406,35 @@ async function tesseractOcr(preprocessed: string): Promise<string> {
   return ocr.type === 'OCR_RESULT' ? ocr.text : '';
 }
 
-// Segment Korean text into word-units via Kiwi (offscreen). Best-effort: returns
-// null on any failure so the caller falls back to space-splitting in analyze().
-async function segment(text: string): Promise<SegWord[] | null> {
-  try {
-    await withTimeout(ensureOffscreen(), OFFSCREEN_TIMEOUT_MS, 'Starting the analyzer timed out.');
-    const resp = (await withTimeout(
-      chrome.runtime.sendMessage({
-        type: 'SEGMENT_REQUEST',
-        target: 'offscreen',
-        text,
-      } satisfies ExtensionMessage),
-      SEGMENT_TIMEOUT_MS,
-      'Word analysis timed out.'
-    )) as ExtensionMessage | undefined;
+/**
+ * Segment + translate + tag Korean text on the Sori server.
+ *
+ * This used to run entirely in-page: Kiwi's wasm in a sandboxed iframe (its
+ * Emscripten glue needs `unsafe-eval`, which only a sandboxed page's CSP may
+ * grant) driven from the offscreen document, with the model bytes transferred
+ * in over postMessage. All of that — and the ~84 MB model shipped inside every
+ * install — is now one HTTP call, shared with the mobile app.
+ *
+ * OCR stays local: it's free, works offline, and Tesseract handles the crisp
+ * rendered text of a webtoon panel well.
+ *
+ * Empty text short-circuits, and a failed call degrades to showing the
+ * recognised text with no analysis, exactly as the local path used to.
+ */
+async function analyzeText(raw: string): Promise<AnalysisResult> {
+  const empty = { text: '', sentenceTranslation: '', tone: '', words: [] };
+  if (!raw?.trim()) return empty;
 
-    if (resp && resp.type === 'SEGMENT_RESULT' && resp.words.length) return resp.words;
-    if (resp && resp.type === 'SEGMENT_ERROR') {
-      console.warn('[Korean Reader] segmentation failed:', resp.message);
-    }
+  const { siteToken } = await getSettings();
+  if (!siteToken) return { ...empty, text: raw };
+
+  report('translating', 0.85);
+  try {
+    return await analyzeOnSite(siteToken, raw);
   } catch (e) {
-    console.warn('[Korean Reader] segmentation error:', e);
+    console.error('[Korean Reader] analysis failed:', e);
+    return { ...empty, text: raw };
   }
-  return null;
 }
 
 // ---------------------------------------------------------------------------
