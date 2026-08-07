@@ -86,6 +86,26 @@ export async function analyzeOnSite(token: string, text: string): Promise<Analys
   };
 }
 
+export interface SiteDeck {
+  id: string;
+  name: string;
+  count: number;
+}
+
+/** GET /api/decks — the decks a captured word can be filed into. */
+export async function fetchDecks(token: string): Promise<SiteDeck[]> {
+  const body = (await request(token, '/api/decks')) as { decks?: unknown };
+  if (!Array.isArray(body.decks)) return [];
+  return body.decks.map((d) => {
+    const deck = d as Partial<SiteDeck>;
+    return {
+      id: String(deck.id ?? ''),
+      name: String(deck.name ?? ''),
+      count: Number(deck.count ?? 0),
+    };
+  });
+}
+
 // Shape POSTed to /api/cards (the site's WordInput schema).
 function toWordInput(card: AnkiCardDraft) {
   const term = (card.base || card.infinitive || card.word).trim().slice(0, 60);
@@ -101,14 +121,21 @@ function toWordInput(card: AnkiCardDraft) {
   };
 }
 
-/** POST /api/cards — save one captured word into the user's Sori deck. */
+/**
+ * POST /api/cards — save one captured word into the user's Sori deck.
+ *
+ * An empty `deckId` is left out of the body entirely: the site then files the
+ * word in the account's first deck, which is what a user who never opened the
+ * deck setting expects.
+ */
 export async function sendCardToSite(
   token: string,
-  card: AnkiCardDraft
+  card: AnkiCardDraft,
+  deckId = ''
 ): Promise<'added' | 'exists'> {
   const body = (await request(token, '/api/cards', {
     method: 'POST',
-    body: JSON.stringify(toWordInput(card)),
+    body: JSON.stringify({ ...toWordInput(card), ...(deckId ? { deckId } : {}) }),
   })) as { status?: string };
   return body.status === 'exists' ? 'exists' : 'added';
 }
@@ -122,13 +149,14 @@ export interface SiteSendResult {
 /** Send a batch of queued cards to the site; mirrors sendCardsToAnki's shape. */
 export async function sendCardsToSite(
   token: string,
-  cards: AnkiCardDraft[]
+  cards: AnkiCardDraft[],
+  deckId = ''
 ): Promise<SiteSendResult> {
   const addedIds: string[] = [];
   const failures: string[] = [];
   for (const card of cards) {
     try {
-      await sendCardToSite(token, card);
+      await sendCardToSite(token, card, deckId);
       addedIds.push(card.id);
     } catch (e) {
       failures.push(`${card.word}: ${e instanceof Error ? e.message : String(e)}`);

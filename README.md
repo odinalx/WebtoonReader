@@ -160,6 +160,10 @@ Captured words are saved to your **Sori deck** by default (`POST /api/cards`);
 choose **Anki** instead in Settings if you prefer local flashcards (see
 [Anki setup](#anki-setup-one-time)).
 
+If your account has several decks, pick the one captures go to in Settings →
+Flashcards. The list is read from the site (`GET /api/decks`), so decks are
+created and renamed there, not here. Left alone, words land in your first deck.
+
 ## How to use
 
 1. **Open a webtoon page** (e.g. comic.naver.com). Chrome can't screenshot

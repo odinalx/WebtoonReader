@@ -15,6 +15,10 @@ export interface Settings {
   // Sori website (subscription + built-in flashcards).
   siteToken: string;      // personal API token ("sori_…") created on /account
   flashcardTarget: FlashcardTarget;
+  // Which Sori deck captured words land in. '' means "the account's first
+  // deck" — the server's own fallback, so a fresh install needs no setup and a
+  // deck deleted on the site doesn't strand the extension.
+  soriDeckId: string;
   voiceApiKeyId: string;  // Clova Voice X-NCP-APIGW-API-KEY-ID
   voiceApiKey: string;    // Clova Voice X-NCP-APIGW-API-KEY
   voiceSpeaker: string;   // e.g. "nara"
@@ -27,6 +31,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   siteToken: '',
   flashcardTarget: 'site',
+  soriDeckId: '',
   voiceApiKeyId: '',
   voiceApiKey: '',
   voiceSpeaker: 'nara',
