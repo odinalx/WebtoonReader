@@ -62,17 +62,6 @@ export interface WordInfo {
   speechLevel?: string;  // politeness/speech level (e.g. "casual (해체)")
 }
 
-// A morpheme produced by Kiwi (subset of its TokenInfo).
-export interface SegMorph {
-  str: string;
-  tag: string;
-}
-// A reconstructed word-unit (어절): its surface plus the morphemes composing it.
-export interface SegWord {
-  surface: string;
-  morphs: SegMorph[];
-}
-
 export interface AnalysisResult {
   text: string;                 // recognized Korean text
   sentenceTranslation: string;  // whole-phrase translation
@@ -135,21 +124,6 @@ export interface OcrResult {
 }
 export interface OcrError {
   type: 'OCR_ERROR';
-  message: string;
-}
-
-// background -> offscreen document (Kiwi word segmentation)
-export interface SegmentRequest {
-  type: 'SEGMENT_REQUEST';
-  target: 'offscreen';
-  text: string;
-}
-export interface SegmentResult {
-  type: 'SEGMENT_RESULT';
-  words: SegWord[];
-}
-export interface SegmentError {
-  type: 'SEGMENT_ERROR';
   message: string;
 }
 
@@ -255,9 +229,6 @@ export type ExtensionMessage =
   | OcrRequest
   | OcrResult
   | OcrError
-  | SegmentRequest
-  | SegmentResult
-  | SegmentError
   | OcrProgress
   | TtsRequest
   | TtsDone

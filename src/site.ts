@@ -1,6 +1,6 @@
 import { SITE_URL } from './config';
 import { romanize } from './romanize';
-import type { AnkiCardDraft } from './types';
+import type { AnalysisResult, AnkiCardDraft } from './types';
 
 // Client for the Sori website's extension API (see the site's src/routes/api).
 // Auth is a personal bearer token ("sori_…") the user creates on /account.
@@ -58,6 +58,31 @@ export async function fetchAccount(token: string): Promise<SiteAccount> {
     name: String(body.name ?? ''),
     plan: String(body.plan ?? 'none'),
     subscribed: Boolean(body.subscribed),
+  };
+}
+
+/**
+ * POST /api/analyze — Korean text in, analysed words out.
+ *
+ * This pipeline (Kiwi segmentation + translation + grammar) used to run
+ * locally: Kiwi's wasm in a sandboxed iframe, driven from the offscreen
+ * document. It moved to the server so the mobile app and this extension share
+ * one implementation — and so the ~84 MB Kiwi model ships once, not with every
+ * copy of the extension.
+ *
+ * OCR stays local. It's free, offline, and Tesseract is good at the crisp
+ * rendered text of a webtoon panel.
+ */
+export async function analyzeOnSite(token: string, text: string): Promise<AnalysisResult> {
+  const body = (await request(token, '/api/analyze', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  })) as Partial<AnalysisResult>;
+  return {
+    text: String(body.text ?? ''),
+    sentenceTranslation: String(body.sentenceTranslation ?? ''),
+    tone: String(body.tone ?? ''),
+    words: Array.isArray(body.words) ? body.words : [],
   };
 }
 
