@@ -281,7 +281,7 @@ function createPanel(): ShadowRoot {
   panel.className = 'panel';
   panel.innerHTML = `
     <div class="header">
-      <span class="title">${ICON.book}<span>Korean Reader</span></span>
+      <span class="title">${ICON.book}<span>Sori</span></span>
       <button class="close" title="Close">${ICON.close}</button>
     </div>
     <div class="body"><div class="status">Capturing…</div></div>

@@ -104,7 +104,7 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse): bool
 
   if (message.type === 'TTS_PLAY' && message.target === 'offscreen') {
     const audio = new Audio(message.audioDataUrl);
-    audio.play().catch((e) => console.error('[Korean Reader] audio play failed:', e));
+    audio.play().catch((e) => console.error('[Sori] audio play failed:', e));
     return false;
   }
 

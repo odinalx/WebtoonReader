@@ -65,15 +65,15 @@ export function App() {
             fontSize={84} fontWeight="bold" textAnchor="middle" dominantBaseline="central">W</text>
         </svg>
       </div>
-      <h1 className="title">Korean Reader</h1>
-      <p className="sub">Scan a webtoon speech bubble — or select any Korean text and right-click "Analyze with Korean Reader".</p>
+      <h1 className="title">Sori</h1>
+      <p className="sub">Scan a webtoon speech bubble — or select any Korean text and right-click “Analyze with Sori”.</p>
 
       {access && !access.ok ? (
         <div className="paywall">
           <div className="paywall-title">🔒 Subscription required</div>
           <p className="paywall-text">
             {access.reason === 'no-token' &&
-              'Korean Reader now works with a Sori account. Subscribe on the website, then paste your access token in the settings.'}
+              'Sori now needs an account. Subscribe on the website, then paste your access token in the settings.'}
             {access.reason === 'invalid-token' &&
               'Your access token was rejected. Create a new one on your Sori account page.'}
             {access.reason === 'not-subscribed' &&

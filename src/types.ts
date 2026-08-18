@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceApiKey: '',
   voiceSpeaker: 'nara',
   ankiConnectUrl: 'http://127.0.0.1:8765',
-  ankiDeck: 'Korean Reader',
+  ankiDeck: 'Sori',
   ankiAutoSend: false,
 };
 
