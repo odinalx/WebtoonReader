@@ -117,7 +117,7 @@ function activateScan() {
 
   const selBox = el('div', {
     position: 'fixed', display: 'none',
-    border: '1.5px solid #00c73c', background: 'rgba(0,199,60,0.10)',
+    border: '1.5px solid #00b552', background: 'rgba(0, 181, 82, 0.10)',
     zIndex: '2147483646', pointerEvents: 'none', boxSizing: 'border-box',
   });
 
@@ -683,16 +683,19 @@ function makeDraggable(host: HTMLElement, handle: HTMLElement) {
 
 const STYLES = `
   :host {
-    --wkr-green: #00c73c;
-    --wkr-green-strong: #00a030;
-    --wkr-green-soft: rgba(0,199,60,0.12);
+    /* Sori's palette, same values as the popup and the site. This panel is
+       injected over someone else's page, so it is the surface most people see
+       — and it was the one still wearing the old green. */
+    --wkr-green: #00b552;
+    --wkr-green-strong: #00893e;
+    --wkr-green-soft: rgba(0, 181, 82, 0.12);
     --wkr-bg: #ffffff;
-    --wkr-surface: #f5f6f8;
-    --wkr-text: #1a1a1a;
-    --wkr-muted: #6b7280;
-    --wkr-border: #e5e7eb;
-    --wkr-ink: #1a1a1a;
-    --wkr-error: #e5484d;
+    --wkr-surface: #f4f1e9;
+    --wkr-text: #16141a;
+    --wkr-muted: #6a6675;
+    --wkr-border: rgba(20, 18, 26, 0.16);
+    --wkr-ink: #16141a;
+    --wkr-error: #d4495f;
   }
   .panel {
     background: var(--wkr-bg);

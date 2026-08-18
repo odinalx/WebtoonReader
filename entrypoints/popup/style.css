@@ -36,7 +36,9 @@ body {
 
 .logo {
   display: flex; align-items: center; justify-content: center;
-  width: 56px; height: 56px; border-radius: 50%; overflow: hidden;
+  /* The mark is a rounded square and carries its own corners; the old 50%
+     was here to clip a circle and would now shave 소 on four sides. */
+  width: 56px; height: 56px;
 }
 
 .title {

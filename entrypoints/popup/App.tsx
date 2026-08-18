@@ -58,11 +58,24 @@ export function App() {
 
   return (
     <div className="app">
+      {/* The site's favicon, drawn rather than fetched so the popup paints with
+          no request: a dark tile with 소 on it, the same mark as the toolbar
+          icon and the browser tab of the site this saves into. It replaced a
+          white W on a circle — W for Webtoon, a name the product no longer has. */}
       <div className="logo">
-        <svg viewBox="0 0 128 128" width="56" height="56">
-          <circle cx="64" cy="64" r="64" fill="#00c73c" />
-          <text x="64" y="68" fill="#ffffff" fontFamily="Arial, Helvetica, sans-serif"
-            fontSize={84} fontWeight="bold" textAnchor="middle" dominantBaseline="central">W</text>
+        <svg viewBox="0 0 64 64" width="56" height="56" role="img" aria-label="Sori">
+          <rect width="64" height="64" rx="14" fill="#14121a" />
+          <text
+            x="32"
+            y="46"
+            textAnchor="middle"
+            fontFamily="'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
+            fontSize={38}
+            fontWeight="700"
+            fill="#00b552"
+          >
+            소
+          </text>
         </svg>
       </div>
       <h1 className="title">Sori</h1>
