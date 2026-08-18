@@ -117,7 +117,7 @@ function toWordInput(card: AnkiCardDraft) {
     translation,
     example: card.sentence,
     exampleTranslation: card.sentenceTranslation,
-    source: card.source || 'Webtoon Korean Reader',
+    source: card.source || 'Sori Extension',
   };
 }
 

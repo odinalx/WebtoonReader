@@ -58,9 +58,9 @@ export function App() {
 
   return (
     <div className="page">
-      <h1>Korean Reader — Settings</h1>
+      <h1>Sori — Settings</h1>
       <p className="lead">
-        Korean Reader requires a <strong>Sori</strong> subscription. Connect your account
+        Sori requires a <strong>subscription</strong>. Connect your account
         below; captured words are saved to your Sori deck (or to Anki if you prefer).
       </p>
 
@@ -170,7 +170,7 @@ export function App() {
             Deck name
             <input
               type="text"
-              placeholder="Korean Reader"
+              placeholder="Sori"
               value={settings.ankiDeck}
               onChange={(e) => update({ ankiDeck: e.target.value })}
             />

@@ -7,6 +7,10 @@ import type { AnkiCardDraft, Settings } from './types';
 
 // Note type we create and own. Fields mirror the user's deck layout minus the
 // Vocab-Pro / Vocab-Hanja / Vocab-Topik fields.
+// NOT renamed with the rest of the extension. This string is the note type's
+// identifier inside the user's own Anki collection: changing it would make the
+// extension create a second, empty type and leave every card already exported
+// attached to the old one. The name people see is Sori; this is a key.
 const MODEL = 'Korean Reader';
 const FIELDS = [
   'Vocab',
@@ -59,7 +63,7 @@ export async function sendCardsToAnki(
   resolveAudio: (text: string) => Promise<string | null>
 ): Promise<AnkiSendResult> {
   const url = (settings.ankiConnectUrl || 'http://127.0.0.1:8765').trim();
-  const deck = settings.ankiDeck.trim() || 'Korean Reader';
+  const deck = settings.ankiDeck.trim() || 'Sori';
 
   // Fails fast (and clearly) if Anki / AnkiConnect isn't reachable.
   await invoke(url, 'version', {});

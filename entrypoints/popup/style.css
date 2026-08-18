@@ -1,15 +1,20 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Sori's palette, taken verbatim from the site's styles.css so the extension
+   and the tab it saves into don't look like two products. The variable names
+   stay --wkr-* : renaming them would touch every rule in the file for no gain
+   the user can see. */
 :root {
-  --wkr-green: #00c73c;
-  --wkr-green-strong: #00a030;
-  --wkr-green-soft: rgba(0,199,60,0.12);
+  --wkr-green: #00b552;
+  --wkr-green-strong: #00893e;
+  --wkr-green-soft: rgba(0, 181, 82, 0.12);
+  /* Warm paper, not cool grey — the single change that makes it read as Sori. */
   --wkr-bg: #ffffff;
-  --wkr-surface: #f5f6f8;
-  --wkr-text: #1a1a1a;
-  --wkr-muted: #6b7280;
-  --wkr-border: #e5e7eb;
-  --wkr-error: #e5484d;
+  --wkr-surface: #f4f1e9;
+  --wkr-text: #16141a;
+  --wkr-muted: #6a6675;
+  --wkr-border: rgba(20, 18, 26, 0.16);
+  --wkr-error: #d4495f;
 }
 
 body {

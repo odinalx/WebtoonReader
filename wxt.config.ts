@@ -35,8 +35,8 @@ function siteOrigin(): string {
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'Webtoon Korean Reader',
-    description: 'OCR + dictionary helper for Korean webtoons',
+    name: 'Sori',
+    description: 'Read Korean webtoons — capture a panel, get the words, save them to your Sori deck',
     version: '0.1.1',
     // Tesseract compiles a .wasm core; MV3's default CSP (script-src 'self')
     // blocks WebAssembly.instantiate. 'wasm-unsafe-eval' re-allows it.

@@ -22,7 +22,7 @@ const SEGMENT_TIMEOUT_MS = 120_000; // first call builds the Kiwi neural model (
 
 // Push a status line to the result panel (and the background console).
 function report(status: string, progress: number) {
-  console.log(`[Korean Reader] ${status} (${Math.round(progress * 100)}%)`);
+  console.log(`[Sori] ${status} (${Math.round(progress * 100)}%)`);
   chrome.runtime
     .sendMessage({ type: 'OCR_PROGRESS', status, progress } satisfies ExtensionMessage)
     .catch(() => {});
@@ -40,7 +40,7 @@ export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: CONTEXT_MENU_ID,
-      title: 'Analyze with Korean Reader',
+      title: 'Analyze with Sori',
       contexts: ['selection'],
       visible: false,
     });
@@ -132,7 +132,7 @@ export default defineBackground(() => {
           try {
             text = await tesseractOcr(preprocessed);
           } catch (e) {
-            console.error('[Korean Reader] OCR failed:', e);
+            console.error('[Sori] OCR failed:', e);
             throw new Error(`OCR failed: ${describe(e)}`);
           }
 
@@ -142,7 +142,7 @@ export default defineBackground(() => {
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Korean Reader] capture pipeline failed:', e);
+          console.error('[Sori] capture pipeline failed:', e);
           sendResponse({ type: 'CAPTURE_ERROR', message: describe(e) } satisfies ExtensionMessage);
         }
       })();
@@ -168,7 +168,7 @@ export default defineBackground(() => {
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Korean Reader] analyze-text pipeline failed:', e);
+          console.error('[Sori] analyze-text pipeline failed:', e);
           sendResponse({ type: 'CAPTURE_ERROR', message: describe(e) } satisfies ExtensionMessage);
         }
       })();
@@ -195,7 +195,7 @@ export default defineBackground(() => {
           } satisfies ExtensionMessage);
           sendResponse({ type: 'TTS_DONE', ok: true } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Korean Reader] TTS failed:', e);
+          console.error('[Sori] TTS failed:', e);
           sendResponse({ type: 'TTS_DONE', ok: false, message: describe(e) } satisfies ExtensionMessage);
         }
       })();
@@ -330,7 +330,7 @@ export default defineBackground(() => {
             message: result.failures[0],
           } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Korean Reader] flashcard op failed:', e);
+          console.error('[Sori] flashcard op failed:', e);
           if (message.type === 'ANKI_SEND_ALL') {
             const queue = await getQueue();
             sendResponse({
@@ -377,7 +377,7 @@ async function audioOrNull(text: string, settings: Settings): Promise<string | n
   try {
     return await resolveTtsAudio(text, settings);
   } catch (e) {
-    console.warn('[Korean Reader] audio for Anki card failed:', e);
+    console.warn('[Sori] audio for Anki card failed:', e);
     return null;
   }
 }
@@ -432,7 +432,7 @@ async function analyzeText(raw: string): Promise<AnalysisResult> {
   try {
     return await analyzeOnSite(siteToken, raw);
   } catch (e) {
-    console.error('[Korean Reader] analysis failed:', e);
+    console.error('[Sori] analysis failed:', e);
     return { ...empty, text: raw };
   }
 }
@@ -453,7 +453,7 @@ async function resolveTtsAudio(text: string, settings: Settings): Promise<string
       const naverUrl = await naverWordAudioUrl(word);
       if (naverUrl) return await fetchAudioAsDataUrl(naverUrl);
     } catch (e) {
-      console.warn('[Korean Reader] Naver dict audio failed:', e);
+      console.warn('[Sori] Naver dict audio failed:', e);
     }
   }
 
@@ -461,7 +461,7 @@ async function resolveTtsAudio(text: string, settings: Settings): Promise<string
     try {
       return await clovaTts(text, settings);
     } catch (e) {
-      console.warn('[Korean Reader] Clova Voice failed, falling back to Google TTS:', e);
+      console.warn('[Sori] Clova Voice failed, falling back to Google TTS:', e);
     }
   }
 

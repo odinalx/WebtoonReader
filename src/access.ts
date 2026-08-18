@@ -69,7 +69,7 @@ export async function getAccess(force = false): Promise<AccessState> {
 export function lockMessage(state: AccessState): string {
   switch (state.reason) {
     case 'no-token':
-      return `Korean Reader now requires a Sori subscription. Create an account at ${SITE_URL}, subscribe, then paste your access token in the extension settings.`;
+      return `Sori requires a subscription. Create an account at ${SITE_URL}, subscribe, then paste your access token in the extension settings.`;
     case 'invalid-token':
       return `Your Sori access token was rejected. Create a new one at ${SITE_URL}/account and paste it in the extension settings.`;
     case 'not-subscribed':
@@ -77,6 +77,6 @@ export function lockMessage(state: AccessState): string {
     case 'offline':
       return `Could not verify your Sori subscription (site unreachable). Check your connection and try again.`;
     default:
-      return `Korean Reader is locked. Sign in on ${SITE_URL} and check your subscription.`;
+      return `Sori is locked. Sign in on ${SITE_URL} and check your subscription.`;
   }
 }
