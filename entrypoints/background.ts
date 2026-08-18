@@ -20,6 +20,30 @@ const OFFSCREEN_TIMEOUT_MS = 15_000;
 const OCR_TIMEOUT_MS = 120_000; // best model is slower
 const SEGMENT_TIMEOUT_MS = 120_000; // first call builds the Kiwi neural model (slow once)
 
+/**
+ * Register a message listener that is allowed to decline.
+ *
+ * @types/webextension-polyfill models onMessage as a union of three shapes, and
+ * the only one taking `sendResponse` must return exactly `true`. That leaves no
+ * way to type the pattern this file is built on: five listeners on one event,
+ * each returning a falsy value for messages that aren't theirs so the next one
+ * gets a look. Both Chrome and Firefox document that return value, and the
+ * async form is not a substitute — a listener returning a promise claims the
+ * message, which would break the hand-off.
+ *
+ * So the cast lives here, once, instead of at five call sites.
+ */
+type DecliningListener = (
+  message: unknown,
+  sender: Parameters<Parameters<typeof browser.runtime.onMessage.addListener>[0]>[1],
+  sendResponse: (response: unknown) => void,
+) => true | undefined;
+
+const onMessage = (listener: DecliningListener): void =>
+  browser.runtime.onMessage.addListener(
+    listener as Parameters<typeof browser.runtime.onMessage.addListener>[0],
+  );
+
 // Push a status line to the result panel (and the background console).
 function report(status: string, progress: number) {
   console.log(`[Sori] ${status} (${Math.round(progress * 100)}%)`);
@@ -57,18 +81,20 @@ export default defineBackground(() => {
       });
   });
 
-  browser.runtime.onMessage.addListener((msg: unknown): boolean => {
+  onMessage((msg: unknown): true | undefined => {
     const message = msg as ExtensionMessage;
-    if (message.type !== 'SET_MENU_VISIBLE') return false;
-    chrome.contextMenus.update(CONTEXT_MENU_ID, { visible: message.visible }).catch(() => {});
-    return false;
+    if (message.type !== 'SET_MENU_VISIBLE') return undefined;
+    // browser.* rather than chrome.*: the polyfill's version returns a promise,
+    // which is what the .catch() below has always assumed.
+    browser.contextMenus.update(CONTEXT_MENU_ID, { visible: message.visible }).catch(() => {});
+    return undefined;
   });
 
   // --- Paywall status for the popup / options page --------------------------
-  browser.runtime.onMessage.addListener(
-    (msg: unknown, _sender, sendResponse): boolean => {
+  onMessage(
+    (msg: unknown, _sender, sendResponse): true | undefined => {
       const message = msg as ExtensionMessage;
-      if (message.type !== 'ACCESS_CHECK') return false;
+      if (message.type !== 'ACCESS_CHECK') return undefined;
 
       (async () => {
         const state = await getAccess(message.force ?? false);
@@ -86,10 +112,10 @@ export default defineBackground(() => {
     }
   );
 
-  browser.runtime.onMessage.addListener(
-    (msg: unknown, sender, sendResponse): boolean => {
+  onMessage(
+    (msg: unknown, sender, sendResponse): true | undefined => {
       const message = msg as ExtensionMessage;
-      if (message.type !== 'CAPTURE_REQUEST') return false;
+      if (message.type !== 'CAPTURE_REQUEST') return undefined;
 
       (async () => {
         try {
@@ -152,10 +178,10 @@ export default defineBackground(() => {
   );
 
   // --- Analyze selected text: same pipeline as a scan, minus capture/OCR ---
-  browser.runtime.onMessage.addListener(
-    (msg: unknown, _sender, sendResponse): boolean => {
+  onMessage(
+    (msg: unknown, _sender, sendResponse): true | undefined => {
       const message = msg as ExtensionMessage;
-      if (message.type !== 'ANALYZE_TEXT') return false;
+      if (message.type !== 'ANALYZE_TEXT') return undefined;
 
       (async () => {
         try {
@@ -178,10 +204,10 @@ export default defineBackground(() => {
   );
 
   // --- Text-to-speech: fetch Google TTS audio, play it in the offscreen doc ---
-  browser.runtime.onMessage.addListener(
-    (msg: unknown, _sender, sendResponse): boolean => {
+  onMessage(
+    (msg: unknown, _sender, sendResponse): true | undefined => {
       const message = msg as ExtensionMessage;
-      if (message.type !== 'TTS_REQUEST') return false;
+      if (message.type !== 'TTS_REQUEST') return undefined;
 
       (async () => {
         try {
@@ -205,8 +231,8 @@ export default defineBackground(() => {
   );
 
   // --- Anki card queue (session list) + AnkiConnect delivery ---
-  browser.runtime.onMessage.addListener(
-    (msg: unknown, _sender, sendResponse): boolean => {
+  onMessage(
+    (msg: unknown, _sender, sendResponse): true | undefined => {
       const message = msg as ExtensionMessage;
       if (
         message.type !== 'ANKI_ADD' &&
@@ -214,7 +240,7 @@ export default defineBackground(() => {
         message.type !== 'ANKI_QUEUE' &&
         message.type !== 'ANKI_CLEAR'
       ) {
-        return false;
+        return undefined;
       }
 
       (async () => {
