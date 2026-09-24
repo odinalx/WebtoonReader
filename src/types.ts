@@ -245,8 +245,24 @@ export interface AnkiClearDone {
   ok: boolean;
 }
 
+// connect content script -> background: the site's /connect-extension page
+// handed over a token. The background verifies it, then stores it.
+export interface ConnectToken {
+  type: 'CONNECT_TOKEN';
+  token: string;
+}
+export interface ConnectDone {
+  type: 'CONNECT_DONE';
+  ok: boolean;
+  email?: string;
+  subscribed?: boolean;
+  error?: import('./connect').ConnectErrorCode;
+}
+
 export type ExtensionMessage =
   | AccessCheckRequest
+  | ConnectToken
+  | ConnectDone
   | AccessInfo
   | ActivateScan
   | StartScan

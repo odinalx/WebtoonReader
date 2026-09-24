@@ -5,12 +5,13 @@ import type {
   FlashcardTarget,
   SelectionRect,
 } from '../src/types';
-import { getSettings, hasVoiceCreds } from '../src/settings';
+import { getSettings, hasVoiceCreds, saveSettings } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
 import {
   analyzeOnSite,
+  fetchAccount,
   isRejectedCard,
   SiteApiError,
   sendCardToSite,
@@ -20,6 +21,7 @@ import { createQueue, withCard, withoutIds } from '../src/queue';
 import { clearAccessCache, deckLock, getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
 import { prepareForOcr } from '../src/ocrPrep';
+import { isConnectPage, TOKEN_RE } from '../src/connect';
 import type { Settings } from '../src/types';
 
 const OFFSCREEN_URL = 'offscreen.html';
@@ -116,6 +118,45 @@ export default defineBackground(() => {
       await chrome.runtime.sendMessage({ type: 'OCR_WARM', target: 'offscreen' } satisfies ExtensionMessage);
     })().catch((e) => console.warn('[Dokhae] OCR warm-up failed:', e));
     return undefined;
+  });
+
+  // --- One-click connect: the site's /connect-extension page hands a token ---
+  // Only the connect content script sends this, and only from that page; the
+  // sender check keeps any other page (or content script) from swapping the
+  // account. The token is verified before it replaces the stored one, so a
+  // stale or revoked token never logs out a working install.
+  onMessage((msg: unknown, sender, sendResponse): true | undefined => {
+    const message = msg as ExtensionMessage;
+    if (message.type !== 'CONNECT_TOKEN') return undefined;
+    const done = (reply: Omit<Extract<ExtensionMessage, { type: 'CONNECT_DONE' }>, 'type'>) =>
+      sendResponse({ type: 'CONNECT_DONE', ...reply } satisfies ExtensionMessage);
+
+    if (
+      sender.id !== chrome.runtime.id ||
+      !isConnectPage(sender.url, SITE_URL) ||
+      !TOKEN_RE.test(message.token)
+    ) {
+      done({ ok: false, error: 'internal' });
+      return undefined;
+    }
+
+    (async () => {
+      try {
+        const account = await fetchAccount(message.token);
+        const settings = await getSettings();
+        await saveSettings({ ...settings, siteToken: message.token });
+        await clearAccessCache();
+        // Warm the cache with the verdict we already have.
+        await getAccess(true);
+        done({ ok: true, email: account.email, subscribed: account.subscribed });
+      } catch (e) {
+        console.warn('[Dokhae] connect failed:', e);
+        if (e instanceof SiteApiError && e.status === 401) done({ ok: false, error: 'invalid_token' });
+        else if (e instanceof SiteApiError && e.status === 0) done({ ok: false, error: 'network' });
+        else done({ ok: false, error: 'internal' });
+      }
+    })();
+    return true;
   });
 
   // --- Paywall status for the popup / options page --------------------------

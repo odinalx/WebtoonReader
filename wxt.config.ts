@@ -38,6 +38,7 @@ export default defineConfig({
     define: {
       // See src/globals.d.ts.
       __SORI_SCREENSHOTS__: JSON.stringify(Boolean(process.env.SORI_SCREENSHOTS)),
+      __DOKHAE_SITE_ORIGIN__: JSON.stringify(siteOrigin()),
     },
   }),
   manifest: {
