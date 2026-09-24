@@ -10,6 +10,9 @@ export interface SiteAccount {
   name: string;
   plan: string;
   subscribed: boolean;
+  /** Scans left today on the free plan (free accounts only). */
+  freeScansLeft: number;
+  freeScansPerDay: number;
 }
 
 // Error carrying the HTTP status + the site's machine-readable `error` code
@@ -58,6 +61,8 @@ export async function fetchAccount(token: string): Promise<SiteAccount> {
     name: String(body.name ?? ''),
     plan: String(body.plan ?? 'none'),
     subscribed: Boolean(body.subscribed),
+    freeScansLeft: Number(body.freeScansLeft ?? 0),
+    freeScansPerDay: Number(body.freeScansPerDay ?? 0),
   };
 }
 
