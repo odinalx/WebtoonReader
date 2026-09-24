@@ -70,8 +70,8 @@ export function App() {
           <AccessBadge access={access} checking={checking} />
         </div>
         <p className="hint">
-          1. Create an account and subscribe at{' '}
-          <a href={`${SITE_URL}/pricing`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}</a>.{' '}
+          1. Create a free account at{' '}
+          <a href={`${SITE_URL}/login`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}</a>.{' '}
           2. On <a href={`${SITE_URL}/account`} target="_blank" rel="noreferrer">your account page</a>,
           create an <em>access token</em>. 3. Paste it here.
         </p>
@@ -91,11 +91,8 @@ export function App() {
         </div>
         {access && !access.ok && (
           <p className="hint warn-hint">
-            {access.reason === 'no-token' && 'No token yet — the extension stays locked until you add one.'}
+            {access.reason === 'no-token' && 'No token yet. Create a free account on the website and paste its token here.'}
             {access.reason === 'invalid-token' && 'This token was rejected. Create a new one on your account page.'}
-            {access.reason === 'not-subscribed' && (
-              <>Your account has no active plan. <a href={`${SITE_URL}/pricing`} target="_blank" rel="noreferrer">Subscribe</a> to unlock the extension.</>
-            )}
             {access.reason === 'offline' && 'Could not reach the Sori site to verify. Check your connection.'}
           </p>
         )}
@@ -250,7 +247,7 @@ function AccessBadge({ access, checking }: { access: AccessView | null; checking
   if (access.ok) {
     return (
       <span className="badge on">
-        {access.email ? `${access.email} · ${access.plan}` : 'subscribed'}
+        {access.email ? `${access.email} · ${access.plan}` : access.plan}
       </span>
     );
   }
