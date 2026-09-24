@@ -1,6 +1,6 @@
 {
-  "name": "sori-extension",
-  "version": "0.1.1",
+  "name": "dokhae-extension",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "postinstall": "node scripts/copy-assets.mjs && wxt prepare",

@@ -44,7 +44,10 @@ export default defineConfig({
   manifest: {
     name: 'Dokhae',
     description: "Lis tes webtoons en coréen\u00a0: capture une bulle, comprends chaque mot, garde-les dans ton deck Dokhae.",
-    version: '0.1.1',
+    version: '1.0.0',
+    homepage_url: siteOrigin(),
+    // chrome.runtime.getContexts (the offscreen document check) is Chrome 116+.
+    minimum_chrome_version: '116',
     // Tesseract compiles a .wasm core; MV3's default CSP (script-src 'self')
     // blocks WebAssembly.instantiate. 'wasm-unsafe-eval' re-allows it.
     // (The sandbox entry that used to sit here existed only for Kiwi, whose
@@ -57,13 +60,18 @@ export default defineConfig({
     // "browsing history" warning at install.
     permissions: ['activeTab', 'scripting', 'storage', 'offscreen', 'contextMenus'],
     host_permissions: [
-      // Google TTS fallback only — translation itself moved to the Dokhae server.
+      // Pronunciation: Google TTS is the fallback voice (translation itself
+      // moved to the Dokhae server)...
       'https://translate.google.com/*',
-      'https://*.apigw.ntruss.com/*',
+      // ...after the Naver dictionary's recorded word audio (page, then file).
       'https://ko.dict.naver.com/*',
       'https://dict-dn.pstatic.net/*',
+      // AnkiConnect on the reader's own machine, for the "Anki" destination.
       'http://127.0.0.1:8765/*',
       'http://localhost:8765/*',
+      // (No *.apigw.ntruss.com: Clova Voice settings are hidden in the options
+      // page, so nobody can enter keys, and without the permission a leftover
+      // key just falls back to Google TTS.)
       // Dokhae website API (account check + saving flashcards).
       `${siteOrigin()}/*`,
       // Screenshot builds only (the site's scripts/screenshots/shoot.mjs):

@@ -1,7 +1,8 @@
 import type { Settings } from './types';
 
-// Naver Clova Voice. Called from the background service worker, which has
-// host_permissions for *.apigw.ntruss.com so requests bypass page CORS.
+// Naver Clova Voice. Called from the background service worker. Parked: its
+// settings are hidden and the manifest no longer asks for *.apigw.ntruss.com,
+// so to bring it back, add that host permission again with the UI.
 
 // ---------------------------------------------------------------------------
 // Clova Voice — Korean text → spoken audio (mp3 data URL)
