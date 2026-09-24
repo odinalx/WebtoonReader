@@ -68,6 +68,19 @@ function confidentText(data: { text?: string; blocks?: unknown }): string {
   return lines.join('\n').trim();
 }
 
+// Tesseract's logger speaks English; the panel shows these lines as is.
+const STATUS_FR: Record<string, string> = {
+  'loading tesseract core': 'chargement du moteur de lecture',
+  'initializing tesseract': 'démarrage du moteur de lecture',
+  'initialized tesseract': 'démarrage du moteur de lecture',
+  'loading language traineddata': 'chargement du modèle coréen',
+  'loading language traineddata (from cache)': 'chargement du modèle coréen',
+  'loaded language traineddata': 'chargement du modèle coréen',
+  'initializing api': 'préparation de la lecture',
+  'initialized api': 'préparation de la lecture',
+  'recognizing text': 'lecture du texte',
+};
+
 function reportProgress(status: string, progress: number) {
   // Fire-and-forget; ignore "no receiver" errors when no panel is listening.
   chrome.runtime
@@ -88,7 +101,9 @@ function getWorker(): Promise<TesseractWorker> {
     // Local language data (bundled) — no network round-trip on first scan.
     langPath: chrome.runtime.getURL('tesseract').replace(/\/$/, ''),
     logger: (m) => {
-      if (m && typeof m.progress === 'number') reportProgress(m.status, m.progress);
+      if (m && typeof m.progress === 'number') {
+        reportProgress(STATUS_FR[m.status] ?? 'lecture du texte', m.progress);
+      }
     },
   })
     .then(async (worker) => {
@@ -106,7 +121,7 @@ function getWorker(): Promise<TesseractWorker> {
       // Reset so a later scan can retry worker creation instead of being stuck
       // on a permanently-rejected promise.
       workerPromise = null;
-      throw new Error(`Failed to initialize OCR engine: ${describe(e)}`);
+      throw new Error(`Le moteur de lecture n'a pas pu démarrer\u00a0: ${describe(e)}`);
     });
   return workerPromise;
 }
@@ -118,7 +133,7 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse): bool
     (async () => {
       try {
         const worker = await getWorker();
-        reportProgress('recognizing text', 0);
+        reportProgress('lecture du texte', 0);
         const { data } = await worker.recognize(message.imageDataUrl);
         sendResponse({ type: 'OCR_RESULT', text: confidentText(data) } satisfies ExtensionMessage);
       } catch (e) {

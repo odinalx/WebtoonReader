@@ -714,7 +714,7 @@ async function tts(text: string) {
       text,
     } satisfies ExtensionMessage)) as ExtensionMessage | undefined;
     if (resp && resp.type === 'TTS_DONE' && resp.ok) return;
-    throw new Error(resp && resp.type === 'TTS_DONE' ? resp.message || 'tts failed' : 'tts failed');
+    throw new Error(resp && resp.type === 'TTS_DONE' ? resp.message || 'la prononciation a échoué' : 'la prononciation a échoué');
   } catch {
     // Fallback to the browser's own voice (may be silent if none installed).
     try {

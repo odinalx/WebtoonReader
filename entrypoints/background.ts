@@ -72,7 +72,7 @@ export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: CONTEXT_MENU_ID,
-      title: 'Analyze with Sori',
+      title: 'Analyser avec Sori',
       contexts: ['selection'],
       visible: false,
     });
