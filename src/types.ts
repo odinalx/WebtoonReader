@@ -138,6 +138,8 @@ export interface OcrRequest {
 export interface OcrResult {
   type: 'OCR_RESULT';
   text: string;
+  /** Offsets in `text` of syllables read with low confidence (src/ocrText.ts). */
+  uncertain: number[];
 }
 export interface OcrError {
   type: 'OCR_ERROR';
