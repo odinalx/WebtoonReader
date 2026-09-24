@@ -1,6 +1,9 @@
 import type { ExtensionMessage, SelectionRect, AnalysisResult, WordInfo } from '../src/types';
 import { romanize } from '../src/romanize';
 import { phraseParts } from '../src/phrase';
+import { SITE_URL } from '../src/config';
+import { CONNECT_PATH } from '../src/connect';
+import type { AccessReason } from '../src/access';
 
 let scanActive = false;
 let activePanel: ShadowRoot | null = null;
@@ -72,6 +75,10 @@ const POS_COLORS: Record<string, string> = {
   determiner: '#a1731c',
   interjection: '#c8412f',
   suffix: '#9b97a6',
+  // Korean-specific classes the analyser also returns: shades of their parents.
+  'auxiliary verb': '#4fa58c',
+  'bound noun': '#6478e0',
+  copula: '#4fa58c',
 };
 
 const POS_LABELS: Record<string, string> = {
@@ -86,6 +93,9 @@ const POS_LABELS: Record<string, string> = {
   interjection: 'interjection',
   suffix: 'suffixe',
   conjunction: 'conjonction',
+  'auxiliary verb': 'verbe auxiliaire',
+  'bound noun': 'nom dépendant',
+  copula: 'copule',
 };
 
 function posColor(pos: string): string {
@@ -233,7 +243,7 @@ async function runCapture(rect: SelectionRect) {
       setPanelError(panel, 'L’extension ne répond pas. Recharge la page et réessaie.', () => runCapture(rect));
       return;
     }
-    if (resp.type === 'CAPTURE_ERROR') { setPanelError(panel, resp.message, () => runCapture(rect)); return; }
+    if (resp.type === 'CAPTURE_ERROR') { setPanelError(panel, resp.message, () => runCapture(rect), resp.reason); return; }
     if (resp.type !== 'CAPTURE_RESULT') return;
 
     renderResults(panel, resp.analysis);
@@ -276,7 +286,7 @@ async function runAnalyzeText(text: string) {
       setPanelError(panel, 'L’extension ne répond pas. Recharge la page et réessaie.', retry);
       return;
     }
-    if (resp.type === 'CAPTURE_ERROR') { setPanelError(panel, resp.message, retry); return; }
+    if (resp.type === 'CAPTURE_ERROR') { setPanelError(panel, resp.message, retry, resp.reason); return; }
     if (resp.type !== 'CAPTURE_RESULT') return;
 
     renderResults(panel, resp.analysis);
@@ -371,13 +381,13 @@ function createPanel(): ShadowRoot {
 
 function setPanelStatus(shadow: ShadowRoot, msg: string) {
   (shadow.querySelector('.body') as HTMLElement).innerHTML =
-    `<div class="status">${esc(msg)}</div>`;
+    `<div class="status" role="status"><span class="spinner" aria-hidden="true"></span>${esc(msg)}</div>`;
 }
 
 function setPanelProgress(shadow: ShadowRoot, status: string, progress: number) {
   const pct = Math.round(Math.max(0, Math.min(1, progress)) * 100);
   (shadow.querySelector('.body') as HTMLElement).innerHTML = `
-    <div class="status">${esc(status)}…</div>
+    <div class="status" role="status"><span class="spinner" aria-hidden="true"></span>${esc(status)}…</div>
     <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
       <div class="progress-bar" style="width:${pct}%"></div>
     </div>
@@ -385,11 +395,26 @@ function setPanelProgress(shadow: ShadowRoot, status: string, progress: number) 
   `;
 }
 
-function setPanelError(shadow: ShadowRoot, msg: string, onRetry?: () => void) {
+// What the reader can do about a refusal, as a link to the right site page.
+function lockAction(reason: AccessReason | undefined): { label: string; href: string } | null {
+  if (reason === 'no-token' || reason === 'invalid-token') {
+    return { label: 'Connecter mon compte', href: `${SITE_URL}${CONNECT_PATH}` };
+  }
+  if (reason === 'not-subscribed') return { label: 'Voir les formules', href: `${SITE_URL}/pricing` };
+  return null;
+}
+
+function setPanelError(shadow: ShadowRoot, msg: string, onRetry?: () => void, reason?: AccessReason) {
   const body = shadow.querySelector('.body') as HTMLElement;
+  const action = lockAction(reason);
+  // With a fix on offer, it leads; retrying becomes the quiet second choice.
   body.innerHTML = `
-    <div class="error" role="alert">${esc(msg)}</div>
-    ${onRetry ? `<button class="btn btn-primary retry">${ICON.refresh}<span>Réessayer</span></button>` : ''}
+    <div class="error" role="alert">
+      <span class="error-title">${action ? 'Accès verrouillé' : 'Ça n’a pas marché'}</span>
+      <span>${esc(msg)}</span>
+    </div>
+    ${action ? `<a class="btn btn-primary" href="${esc(action.href)}" target="_blank" rel="noreferrer">${esc(action.label)}</a>` : ''}
+    ${onRetry ? `<button class="btn ${action ? 'btn-quiet' : 'btn-primary'} retry">${ICON.refresh}<span>Réessayer</span></button>` : ''}
   `;
   if (onRetry) {
     body.querySelector('.retry')!.addEventListener('click', onRetry);
@@ -614,28 +639,42 @@ function showWordPopover(shadow: ShadowRoot, anchor: HTMLElement, info: WordInfo
       <div class="pop-example-ko" lang="ko">${highlightWord(sentence, info.surface, color)}</div>
       ${sentenceTr ? `<div class="pop-example-en">${esc(`« ${sentenceTr} »`)}</div>` : ''}
     </div>` : ''}
-    <button class="btn btn-ink pop-flash">${ICON.plus}<span>Ajouter au deck</span></button>
+    <div class="pop-actions">
+      <button class="btn btn-ink pop-flash">${ICON.plus}<span>Ajouter au deck</span></button>
+      <div class="pop-note" role="status" aria-live="polite"></div>
+    </div>
     <a class="pop-naver" target="_blank" rel="noreferrer" href="https://korean.dict.naver.com/koendict/#/search?range=all&query=${encodeURIComponent(info.infinitive || info.base || info.surface)}">
       ${ICON.external}<span>Ouvrir dans le dictionnaire Naver</span>
     </a>
   `;
   shadow.appendChild(pop);
 
-  // Position relative to the clicked word, then clamp inside the viewport on
-  // both axes (flip above the word if it would overflow the bottom).
+  // Beside the panel when there is room (so the sentence and the panel stay
+  // readable), otherwise under the clicked word; clamped inside the viewport,
+  // whose width excludes the page scrollbar.
   const r = anchor.getBoundingClientRect();
+  const panelRect = (shadow.host as HTMLElement).getBoundingClientRect();
   const margin = 8;
+  const gap = 10;
+  const viewW = document.documentElement.clientWidth || window.innerWidth;
+  const viewH = document.documentElement.clientHeight || window.innerHeight;
   const { width: popW, height: popH } = pop.getBoundingClientRect();
 
-  let left = r.left;
-  if (left + popW > window.innerWidth - margin) left = window.innerWidth - popW - margin;
-  left = Math.max(margin, left);
-
-  let top = r.bottom + 6;
-  if (top + popH > window.innerHeight - margin) {
-    top = r.top - popH - 6; // flip above the word
-    if (top < margin) top = Math.max(margin, window.innerHeight - popH - margin);
+  let left: number;
+  let top: number;
+  if (panelRect.left - gap - popW >= margin) {
+    left = panelRect.left - gap - popW;
+    top = r.top - 14;
+  } else if (panelRect.right + gap + popW <= viewW - margin) {
+    left = panelRect.right + gap;
+    top = r.top - 14;
+  } else {
+    left = r.left;
+    top = r.bottom + 6;
+    if (top + popH > viewH - margin) top = r.top - popH - 6; // flip above the word
   }
+  left = Math.max(margin, Math.min(left, viewW - popW - margin));
+  top = Math.max(margin, Math.min(top, viewH - popH - margin));
 
   pop.style.left = `${left}px`;
   pop.style.top = `${top}px`;
@@ -659,17 +698,26 @@ function showWordPopover(shadow: ShadowRoot, anchor: HTMLElement, info: WordInfo
   pop.querySelector('.pop-close')!.addEventListener('click', () => dismiss(true));
 
   const ankiBtn = pop.querySelector('.pop-flash') as HTMLButtonElement;
-  const ankiIcon = () => ankiBtn.querySelector('svg');
+  // The icon is always the button's first element (an svg, or the spinner).
+  const ankiIcon = () => ankiBtn.firstElementChild;
   const ankiLabel = ankiBtn.querySelector('span') as HTMLElement;
   const setIcon = (svg: string) => {
     const tmp = document.createElement('span');
     tmp.innerHTML = svg;
     ankiIcon()?.replaceWith(tmp.firstElementChild!);
   };
+  const note = pop.querySelector('.pop-note') as HTMLElement;
+  const setNote = (html: string, tone: '' | 'ok' | 'warn' = '') => {
+    note.className = `pop-note${tone ? ` ${tone}` : ''}`;
+    note.innerHTML = html;
+  };
   ankiBtn.addEventListener('click', async () => {
     ankiBtn.disabled = true;
     ankiBtn.classList.remove('warn');
-    ankiLabel.textContent = 'Ajout en cours…';
+    ankiBtn.setAttribute('aria-busy', 'true');
+    setIcon('<span class="spinner" aria-hidden="true"></span>');
+    ankiLabel.textContent = 'Ajout…';
+    setNote('');
     const card = {
       word: info.surface,
       base: info.base,
@@ -689,15 +737,32 @@ function showWordPopover(shadow: ShadowRoot, anchor: HTMLElement, info: WordInfo
     } catch {
       resp = undefined;
     }
+    ankiBtn.removeAttribute('aria-busy');
     if (resp && resp.type === 'ANKI_ADD_DONE' && resp.ok) {
       ankiBtn.classList.add('done');
       setIcon(ICON.check);
-      ankiLabel.textContent = resp.sentNow ? `Ajoutée à ${targetName(resp.target)}` : 'Mise en attente';
+      if (resp.sentNow && resp.target === 'site') {
+        ankiLabel.textContent = 'Dans ton deck';
+        setNote(`Ajoutée à tes révisions. <a href="${esc(`${SITE_URL}/deck`)}" target="_blank" rel="noreferrer">Voir mon deck</a>`, 'ok');
+      } else if (resp.sentNow) {
+        ankiLabel.textContent = 'Envoyée à Anki';
+      } else {
+        ankiLabel.textContent = 'Mise en attente';
+        setNote('Elle part avec «\u00a0Tout envoyer\u00a0», en bas du panneau.');
+      }
     } else {
+      // The label stays short; the why goes underneath, with a fix when there is one.
+      setIcon(ICON.refresh);
+      ankiLabel.textContent = 'Réessayer';
       ankiBtn.classList.add('warn');
-      ankiLabel.textContent =
-        resp && resp.type === 'ANKI_ADD_DONE' ? (resp.message || 'Gardée en attente') : 'Échec, réessaie';
       ankiBtn.disabled = false;
+      const msg =
+        resp && resp.type === 'ANKI_ADD_DONE' ? (resp.message || 'Gardée en attente.') : 'L’extension ne répond pas. Recharge la page et réessaie.';
+      const action = lockAction(resp && resp.type === 'ANKI_ADD_DONE' ? resp.reason : undefined);
+      setNote(
+        `${esc(msg)}${action ? ` <a href="${esc(action.href)}" target="_blank" rel="noreferrer">${esc(action.label)}</a>` : ''}`,
+        'warn',
+      );
     }
     void updateAnkiBar(shadow);
   });
@@ -875,13 +940,25 @@ const STYLES = `
     font-size: 11px; font-weight: 600; line-height: 1.2;
     text-transform: uppercase; letter-spacing: 0.08em; color: var(--wkr-muted);
   }
-  .status { color: var(--wkr-muted); font-size: 14px; text-align: center; padding: 18px 8px; }
+  .status {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: var(--wkr-muted); font-size: 14px; text-align: center; padding: 18px 8px;
+  }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; flex: none;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    animation: wkr-spin 0.7s linear infinite;
+  }
+  @keyframes wkr-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
   .muted { color: var(--wkr-muted); }
   .error {
     color: var(--wkr-error-strong); font-size: 14px; padding: 10px 12px;
     background: #fbeeeb; border: 1px solid rgba(200, 65, 47, 0.3); border-radius: 12px;
     line-height: 1.5; word-break: break-word;
+    display: flex; flex-direction: column; gap: 2px;
   }
+  .error-title { font-weight: 700; }
   .progress { width: 100%; height: 6px; background: var(--wkr-surface); border-radius: 3px; overflow: hidden; }
   .progress-bar { height: 100%; background: var(--wkr-accent); border-radius: 3px; transition: width 0.2s ease; }
   .progress-pct { font-size: 11px; color: var(--wkr-muted); text-align: center; font-variant-numeric: tabular-nums; }
@@ -991,6 +1068,12 @@ const STYLES = `
   .pop-example-ko { font-size: 14px; line-height: 1.6; color: var(--wkr-text); word-break: keep-all; }
   .pop-hl { padding: 0 2px; border-radius: 3px; font-weight: 700; }
   .pop-example-en { font-size: 13px; color: var(--wkr-muted); line-height: 1.5; }
+  .pop-actions { display: flex; flex-direction: column; gap: 6px; }
+  .pop-note { font-size: 12px; line-height: 1.45; color: var(--wkr-muted); }
+  .pop-note:empty { display: none; }
+  .pop-note.ok { color: var(--wkr-celadon-strong); }
+  .pop-note.warn { color: var(--wkr-error-strong); }
+  .pop-note a { color: inherit; font-weight: 600; text-underline-offset: 2px; }
   .pop-flash.done { --fill: var(--wkr-celadon); --edge: var(--wkr-celadon-strong); color: #fff; }
   .pop-flash.warn { --fill: var(--wkr-bg); --edge: var(--wkr-error); color: var(--wkr-error-strong); }
   .pop-naver {

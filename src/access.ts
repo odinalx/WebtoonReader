@@ -84,16 +84,40 @@ export async function getAccess(force = false): Promise<AccessState> {
 export function lockMessage(state: AccessState): string {
   switch (state.reason) {
     case 'no-token':
-      return `Connecte ton compte Dokhae pour scanner\u00a0: clique sur l'icône de l'extension, puis sur «\u00a0Connecter mon compte\u00a0».`;
+      return `Connecte ton compte Dokhae pour scanner et garder tes mots.`;
     case 'invalid-token':
-      return `Ton accès à Dokhae a expiré ou a été révoqué. Reconnecte l'extension depuis son icône.`;
+      return `Ton accès à Dokhae a expiré ou a été révoqué. Reconnecte ton compte.`;
     case 'not-subscribed':
-      return `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
+      return `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€.`;
     case 'offline':
       return `Impossible de vérifier ton abonnement (site injoignable). Vérifie ta connexion et réessaie.`;
     default:
       return `Dokhae est verrouillé. Connecte-toi sur ${SITE_URL} et vérifie ton abonnement.`;
   }
+}
+
+/**
+ * A refusal the reader can fix (connect, subscribe, reconnect). Carries the
+ * reason so the panel can offer the matching button instead of a bare URL.
+ */
+export class AccessLockedError extends Error {
+  constructor(readonly reason: AccessReason, message: string) {
+    super(message);
+  }
+}
+
+export function lockError(state: AccessState): AccessLockedError {
+  return new AccessLockedError(state.reason ?? 'no-token', lockMessage(state));
+}
+
+/** The access reason behind an error, when there is one to act on. */
+export function lockReason(e: unknown): AccessReason | undefined {
+  if (e instanceof AccessLockedError) return e.reason;
+  if (e instanceof SiteApiError) {
+    if (e.code === 'subscription_required') return 'not-subscribed';
+    if (e.status === 401) return 'invalid-token';
+  }
+  return undefined;
 }
 
 /** Why the website deck is closed to this account, or null when it is open. */

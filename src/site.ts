@@ -25,9 +25,9 @@ export class SiteApiError extends Error {
 }
 
 const FRENCH_ERRORS: Record<string, string> = {
-  subscription_required: `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`,
+  subscription_required: `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€.`,
   rate_limited: 'Trop de scans d\'un coup. Réessaie dans un moment.',
-  http_401: `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account.`,
+  http_401: `Ton accès à Dokhae a expiré ou a été révoqué. Reconnecte ton compte.`,
 };
 
 async function request(token: string, path: string, init?: RequestInit): Promise<unknown> {

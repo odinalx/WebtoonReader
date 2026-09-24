@@ -1,3 +1,5 @@
+import type { AccessReason } from './access';
+
 export interface SelectionRect {
   x: number;
   y: number;
@@ -88,6 +90,8 @@ export interface CaptureResult {
 export interface CaptureError {
   type: 'CAPTURE_ERROR';
   message: string;
+  /** Set when the reader can fix it: the panel then offers the right button. */
+  reason?: AccessReason;
 }
 
 // background -> content script (activate the drag overlay)
@@ -188,7 +192,7 @@ export interface AccessCheckRequest {
 export interface AccessInfo {
   type: 'ACCESS_INFO';
   ok: boolean;
-  reason?: 'no-token' | 'invalid-token' | 'not-subscribed' | 'offline';
+  reason?: AccessReason;
   email?: string;
   plan?: string;
   subscribed?: boolean;
@@ -208,6 +212,7 @@ export interface AnkiAddDone {
   sentNow: boolean; // true if it went straight to the destination
   target: FlashcardTarget;
   message?: string;
+  reason?: AccessReason;
 }
 
 // content/popup -> background: flush the whole queue to the destination
