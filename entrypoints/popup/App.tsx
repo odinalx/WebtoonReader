@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ExtensionMessage } from '../../src/types';
+import { SITE_URL } from '../../src/config';
+import { CONNECT_PATH } from '../../src/connect';
 
 type Status = 'idle' | 'activating' | 'error';
 
@@ -9,7 +11,6 @@ interface AccessView {
   email?: string;
   plan?: string;
   subscribed?: boolean;
-  siteUrl: string;
 }
 
 const PLAN_NAMES: Record<string, string> = {
@@ -18,7 +19,7 @@ const PLAN_NAMES: Record<string, string> = {
   lifetime: 'à vie',
 };
 
-/** The site's mark: blue tile, an S drawn as a path (same file as the icon). */
+/** The site's mark: blue tile, a D drawn as a path (same file as the icon). */
 function Logo() {
   return (
     <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true">
@@ -31,14 +32,28 @@ function Logo() {
   );
 }
 
+function ScanIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+    </svg>
+  );
+}
+
+function Spinner() {
+  return <span className="spinner" aria-hidden="true" />;
+}
+
 export function App() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   // null = still checking; the scan button stays enabled meanwhile so a warm
   // cache never blocks a paying user.
   const [access, setAccess] = useState<AccessView | null>(null);
+  const [checking, setChecking] = useState(true);
 
   const check = useCallback(async () => {
+    setChecking(true);
     try {
       const resp = (await browser.runtime.sendMessage({
         type: 'ACCESS_CHECK',
@@ -48,12 +63,13 @@ export function App() {
       if (resp && resp.type === 'ACCESS_INFO') {
         setAccess({
           ok: resp.ok, reason: resp.reason, email: resp.email,
-          plan: resp.plan, subscribed: resp.subscribed, siteUrl: resp.siteUrl,
+          plan: resp.plan, subscribed: resp.subscribed,
         });
       }
     } catch {
       /* background not ready: leave the button usable, scans re-check anyway */
     }
+    setChecking(false);
   }, []);
 
   useEffect(() => {
@@ -61,7 +77,12 @@ export function App() {
   }, [check]);
 
   const open = (path: string) => {
-    if (access) void browser.tabs.create({ url: `${access.siteUrl}${path}` });
+    void browser.tabs.create({ url: `${SITE_URL}${path}` });
+    window.close();
+  };
+  const openOptions = () => {
+    void browser.runtime.openOptionsPage();
+    window.close();
   };
 
   const startScan = async () => {
@@ -91,7 +112,7 @@ export function App() {
     }
   };
 
-  const locked = access && !access.ok;
+  const reason = access && !access.ok ? access.reason : undefined;
 
   return (
     <div className="app">
@@ -105,9 +126,29 @@ export function App() {
         ) : null}
       </header>
 
-      {locked && access.reason === 'not-subscribed' ? (
-        <section className="card">
-          <h1 className="card-title">Premier mois à 2,99&nbsp;€</h1>
+      {reason === 'no-token' || reason === 'invalid-token' ? (
+        <section className="card" aria-labelledby="state-title">
+          <h1 id="state-title" className="card-title">
+            {reason === 'no-token' ? 'Connecte ton compte' : 'Reconnecte ton compte'}
+          </h1>
+          <p className="card-text">
+            {reason === 'no-token'
+              ? 'Un clic suffit : Dokhae s’ouvre dans un onglet et relie l’extension à ton compte.'
+              : 'Ton accès a expiré ou a été révoqué. Reconnecte l’extension en un clic.'}
+          </p>
+          <button className="btn btn-primary" onClick={() => open(CONNECT_PATH)}>
+            Connecter mon compte
+          </button>
+          {reason === 'no-token' && (
+            <p className="card-foot">
+              Pas encore de compte&nbsp;?{' '}
+              <button className="btn-link" onClick={() => open('/login')}>Crée-le ici</button>
+            </p>
+          )}
+        </section>
+      ) : reason === 'not-subscribed' ? (
+        <section className="card" aria-labelledby="state-title">
+          <h1 id="state-title" className="card-title">Premier mois à 2,99&nbsp;€</h1>
           <p className="card-text">
             Scanner fait partie de l'abonnement, qui débloque aussi la lecture sur le site
             et tes cartes. Le premier mois à 2,99&nbsp;€ est réservé aux nouveaux comptes.
@@ -115,35 +156,20 @@ export function App() {
           <button className="btn btn-primary" onClick={() => open('/pricing')}>
             Voir les formules
           </button>
-          <button className="btn-link" onClick={() => void check()}>
-            Déjà abonné&nbsp;? Actualiser
+          <button className="btn btn-quiet" onClick={() => void check()} disabled={checking}>
+            {checking ? <><Spinner />Vérification…</> : 'Déjà abonné ? Actualiser'}
           </button>
+          {access?.email ? <p className="card-foot">Connecté en tant que {access.email}</p> : null}
         </section>
-      ) : locked && (access.reason === 'no-token' || access.reason === 'invalid-token') ? (
-        <section className="card">
-          <h1 className="card-title">
-            {access.reason === 'no-token' ? 'Connecte ton compte' : 'Jeton refusé'}
-          </h1>
+      ) : reason ? (
+        <section className="card" aria-labelledby="state-title">
+          <h1 id="state-title" className="card-title">Hors connexion</h1>
           <p className="card-text">
-            {access.reason === 'no-token'
-              ? "Crée un jeton d'accès sur ta page Compte, puis colle-le dans les réglages de l'extension."
-              : "Ce jeton ne marche plus. Crées-en un nouveau sur ta page Compte et colle-le dans les réglages."}
+            Impossible de joindre Dokhae pour vérifier ton abonnement. Vérifie ta connexion,
+            puis réessaie.
           </p>
-          <button className="btn btn-primary" onClick={() => open('/account')}>
-            Ouvrir mon compte
-          </button>
-          <button className="btn btn-quiet" onClick={() => browser.runtime.openOptionsPage()}>
-            Coller mon jeton
-          </button>
-        </section>
-      ) : locked ? (
-        <section className="card">
-          <h1 className="card-title">Hors connexion</h1>
-          <p className="card-text">
-            Impossible de joindre Dokhae pour vérifier ton abonnement. Vérifie ta connexion.
-          </p>
-          <button className="btn btn-quiet" onClick={() => void check()}>
-            Réessayer
+          <button className="btn btn-quiet" onClick={() => void check()} disabled={checking}>
+            {checking ? <><Spinner />Vérification…</> : 'Réessayer'}
           </button>
         </section>
       ) : (
@@ -153,39 +179,34 @@ export function App() {
             onClick={startScan}
             disabled={status === 'activating'}
           >
-            {status === 'activating' ? (
-              'Activation…'
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
-                </svg>
-                Scanner une bulle
-              </>
-            )}
+            {status === 'activating' ? <><Spinner />Ouverture…</> : <><ScanIcon />Scanner une bulle</>}
           </button>
           <p className="or">
-            ou sélectionne du coréen et fais un clic droit, «&nbsp;Analyser avec Dokhae&nbsp;»
+            ou sélectionne du coréen, clic droit, «&nbsp;Analyser avec Dokhae&nbsp;»
           </p>
 
-          {status === 'error' && <div className="error">{error}</div>}
+          {status === 'error' && <div className="error" role="alert">{error}</div>}
 
           <ol className="steps">
             <li><span>1</span>Ouvre un webtoon</li>
             <li><span>2</span>Encadre une bulle</li>
             <li><span>3</span>Clique un mot, garde-le dans ton deck</li>
           </ol>
+
+          <p className="account" role="status">
+            {checking && !access ? (
+              <><Spinner />Vérification du compte…</>
+            ) : access?.email ? (
+              <><span className="dot-ok" aria-hidden="true" />{access.email}</>
+            ) : null}
+          </p>
         </>
       )}
 
       <footer className="bottom">
-        <button className="btn-link" onClick={() => browser.runtime.openOptionsPage()}>
-          Réglages
-        </button>
+        <button className="btn-link" onClick={openOptions}>Réglages</button>
         <span aria-hidden="true">·</span>
-        <button className="btn-link" onClick={() => open('/deck')} disabled={!access}>
-          Mon deck
-        </button>
+        <button className="btn-link" onClick={() => open('/deck')}>Mon deck</button>
       </footer>
     </div>
   );

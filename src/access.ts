@@ -84,9 +84,9 @@ export async function getAccess(force = false): Promise<AccessState> {
 export function lockMessage(state: AccessState): string {
   switch (state.reason) {
     case 'no-token':
-      return `Connecte ton compte Dokhae\u00a0: crée un jeton d'accès sur ${SITE_URL}/account, puis colle-le dans les réglages de l'extension.`;
+      return `Connecte ton compte Dokhae pour scanner\u00a0: clique sur l'icône de l'extension, puis sur «\u00a0Connecter mon compte\u00a0».`;
     case 'invalid-token':
-      return `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account et colle-le dans les réglages de l'extension.`;
+      return `Ton accès à Dokhae a expiré ou a été révoqué. Reconnecte l'extension depuis son icône.`;
     case 'not-subscribed':
       return `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
     case 'offline':
