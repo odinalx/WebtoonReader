@@ -5,16 +5,16 @@
    stay --wkr-* : renaming them would touch every rule in the file for no gain
    the user can see. */
 :root {
-  --wkr-green: #00b552;
-  --wkr-green-strong: #00893e;
-  --wkr-green-soft: rgba(0, 181, 82, 0.12);
+  --wkr-accent: #2f4bd8;
+  --wkr-accent-strong: #2438a8;
+  --wkr-accent-soft: #e4e8fb;
   /* Warm paper, not cool grey — the single change that makes it read as Sori. */
   --wkr-bg: #ffffff;
   --wkr-surface: #f4f1e9;
   --wkr-text: #16141a;
   --wkr-muted: #6a6675;
-  --wkr-border: rgba(20, 18, 26, 0.16);
-  --wkr-error: #d4495f;
+  --wkr-border: rgba(20, 18, 26, 0.14);
+  --wkr-error: #c8412f;
 }
 
 body {
@@ -22,7 +22,7 @@ body {
   min-height: 320px;
   background: var(--wkr-bg);
   color: var(--wkr-text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, system-ui, -apple-system, sans-serif;
   font-size: 14px;
 }
 
@@ -44,7 +44,7 @@ body {
 .title {
   font-size: 18px;
   font-weight: 700;
-  color: var(--wkr-green-strong);
+  color: var(--wkr-accent-strong);
   letter-spacing: 0.3px;
 }
 
@@ -62,8 +62,8 @@ body {
   gap: 8px;
   width: 100%;
   padding: 10px 16px;
-  background: var(--wkr-green);
-  border: 1px solid var(--wkr-green);
+  background: var(--wkr-accent);
+  border: 1px solid var(--wkr-accent);
   color: #fff;
   border-radius: 8px;
   cursor: pointer;
@@ -72,7 +72,7 @@ body {
   transition: background 0.15s;
   margin-top: 4px;
 }
-.scan-btn:hover:not(:disabled) { background: var(--wkr-green-strong); border-color: var(--wkr-green-strong); }
+.scan-btn:hover:not(:disabled) { background: var(--wkr-accent-strong); border-color: var(--wkr-accent-strong); }
 .scan-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .paywall {
@@ -107,7 +107,7 @@ body {
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: #00b552;
+  color: var(--wkr-accent);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -151,4 +151,4 @@ body {
   font-size: 12px;
   cursor: pointer;
 }
-.settings-link:hover { color: var(--wkr-green-strong); border-color: var(--wkr-green); }
+.settings-link:hover { color: var(--wkr-accent-strong); border-color: var(--wkr-accent); }

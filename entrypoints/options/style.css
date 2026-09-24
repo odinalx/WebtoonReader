@@ -5,22 +5,22 @@
    stay --wkr-* : renaming them would touch every rule in the file for no gain
    the user can see. */
 :root {
-  --wkr-green: #00b552;
-  --wkr-green-strong: #00893e;
-  --wkr-green-soft: rgba(0, 181, 82, 0.12);
+  --wkr-accent: #2f4bd8;
+  --wkr-accent-strong: #2438a8;
+  --wkr-accent-soft: #e4e8fb;
   /* Warm paper, not cool grey — the single change that makes it read as Sori. */
   --wkr-bg: #ffffff;
   --wkr-surface: #f4f1e9;
   --wkr-text: #16141a;
   --wkr-muted: #6a6675;
-  --wkr-border: rgba(20, 18, 26, 0.16);
-  --wkr-error: #d4495f;
+  --wkr-border: rgba(20, 18, 26, 0.14);
+  --wkr-error: #c8412f;
 }
 
 body {
   background: var(--wkr-surface);
   color: var(--wkr-text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, system-ui, -apple-system, sans-serif;
   font-size: 14px;
   line-height: 1.5;
 }
@@ -34,7 +34,7 @@ body {
   gap: 20px;
 }
 
-h1 { font-size: 20px; color: var(--wkr-green-strong); }
+h1 { font-size: 20px; color: var(--wkr-accent-strong); }
 .lead { color: var(--wkr-muted); font-size: 13px; }
 
 section {
@@ -54,28 +54,28 @@ h2 { font-size: 15px; }
   font-size: 11px; padding: 2px 9px; border-radius: 20px;
   background: var(--wkr-surface); color: var(--wkr-muted);
 }
-.badge.on { background: var(--wkr-green-soft); color: var(--wkr-green-strong); }
+.badge.on { background: var(--wkr-accent-soft); color: var(--wkr-accent-strong); }
 
 .hint { font-size: 12px; color: var(--wkr-muted); }
 .warn-hint { color: var(--wkr-error); }
 .warn-hint a { color: var(--wkr-error); font-weight: 600; }
 .hint strong { color: var(--wkr-text); }
-.hint em { color: var(--wkr-green-strong); font-style: normal; }
-.hint a, .field-hint a { color: var(--wkr-green-strong); }
+.hint em { color: var(--wkr-accent-strong); font-style: normal; }
+.hint a, .field-hint a { color: var(--wkr-accent-strong); }
 code {
   background: var(--wkr-surface); border: 1px solid var(--wkr-border); border-radius: 4px;
   padding: 1px 5px; font-size: 12px; color: var(--wkr-text);
 }
 .origin-box {
   background: var(--wkr-surface); border: 1px solid var(--wkr-border); border-radius: 7px;
-  padding: 10px 12px; font-size: 12px; color: var(--wkr-green-strong);
+  padding: 10px 12px; font-size: 12px; color: var(--wkr-accent-strong);
   white-space: pre; overflow-x: auto; margin: 0;
 }
 .field-hint { font-size: 11px; color: var(--wkr-muted); }
 /* An action that belongs in a sentence — same weight as the links beside it. */
 .linkish {
   background: none; border: none; padding: 0; cursor: pointer;
-  font: inherit; color: var(--wkr-green-strong); text-decoration: underline;
+  font: inherit; color: var(--wkr-accent-strong); text-decoration: underline;
 }
 label.checkbox {
   flex-direction: row; align-items: flex-start; gap: 8px;
@@ -97,13 +97,13 @@ input, select {
   font-size: 13px;
   font-family: inherit;
 }
-input:focus, select:focus { outline: none; border-color: var(--wkr-green); }
+input:focus, select:focus { outline: none; border-color: var(--wkr-accent); }
 
 .actions { display: flex; align-items: center; gap: 12px; }
 .save {
-  background: var(--wkr-green); border: 1px solid var(--wkr-green); color: #fff;
+  background: var(--wkr-accent); border: 1px solid var(--wkr-accent); color: #fff;
   padding: 10px 24px; border-radius: 8px; cursor: pointer;
   font-size: 14px; font-weight: 600;
 }
-.save:hover { background: var(--wkr-green-strong); border-color: var(--wkr-green-strong); }
-.saved-note { color: var(--wkr-green-strong); font-size: 13px; }
+.save:hover { background: var(--wkr-accent-strong); border-color: var(--wkr-accent-strong); }
+.saved-note { color: var(--wkr-accent-strong); font-size: 13px; }

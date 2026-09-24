@@ -69,7 +69,7 @@ export function App() {
           white W on a circle — W for Webtoon, a name the product no longer has. */}
       <div className="logo">
         <svg viewBox="0 0 64 64" width="56" height="56" role="img" aria-label="Sori">
-          <rect width="64" height="64" rx="14" fill="#14121a" />
+          <rect width="64" height="64" rx="14" fill="#2f4bd8" />
           <text
             x="32"
             y="46"
@@ -77,14 +77,14 @@ export function App() {
             fontFamily="'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
             fontSize={38}
             fontWeight="700"
-            fill="#00b552"
+            fill="#f4f1e9"
           >
             소
           </text>
         </svg>
       </div>
       <h1 className="title">Sori</h1>
-      <p className="sub">Scan a webtoon speech bubble — or select any Korean text and right-click “Analyze with Sori”.</p>
+      <p className="sub">Scan a webtoon speech bubble, or select any Korean text and right-click “Analyze with Sori”.</p>
 
       {access && !access.ok ? (
         <div className="paywall">
