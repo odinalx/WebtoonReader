@@ -9,7 +9,14 @@ import { getSettings, hasVoiceCreds } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
-import { analyzeOnSite, SiteApiError, sendCardToSite, sendCardsToSite } from '../src/site';
+import {
+  analyzeOnSite,
+  isRejectedCard,
+  SiteApiError,
+  sendCardToSite,
+  sendCardsToSite,
+} from '../src/site';
+import { createQueue, withCard, withoutIds } from '../src/queue';
 import { clearAccessCache, deckLock, getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
 import { prepareForOcr } from '../src/ocrPrep';
@@ -251,10 +258,10 @@ export default defineBackground(() => {
           target = settings.flashcardTarget;
 
           if (message.type === 'ANKI_QUEUE') {
-            const queue = await getQueue();
+            const cards = await getQueue();
             sendResponse({
               type: 'ANKI_QUEUE_INFO',
-              count: queue.length,
+              count: cards.length,
               autoSend: settings.ankiAutoSend,
               target,
             } satisfies ExtensionMessage);
@@ -262,7 +269,7 @@ export default defineBackground(() => {
           }
 
           if (message.type === 'ANKI_CLEAR') {
-            await setQueue([]);
+            await queue.update(() => []);
             sendResponse({ type: 'ANKI_CLEAR_DONE', ok: true } satisfies ExtensionMessage);
             return;
           }
@@ -286,11 +293,18 @@ export default defineBackground(() => {
                   sentNow: true, target,
                 } satisfies ExtensionMessage);
               } catch (e) {
-                const queue = [...(await getQueue()), card];
-                await setQueue(queue);
+                // A card the site rejects as invalid would fail forever: don't keep it.
+                if (isRejectedCard(e)) {
+                  sendResponse({
+                    type: 'ANKI_ADD_DONE', ok: false, queued: (await getQueue()).length,
+                    sentNow: false, target, message: 'Carte refusée par Sori (mot ou traduction invalide), elle n\'est pas gardée.',
+                  } satisfies ExtensionMessage);
+                  return;
+                }
+                const queued = await queue.update((q) => withCard(q, card));
                 sendResponse({
-                  type: 'ANKI_ADD_DONE', ok: false, queued: queue.length, sentNow: false,
-                  target, message: `Kept in queue — saving to Sori failed: ${describe(e)}`,
+                  type: 'ANKI_ADD_DONE', ok: false, queued: queued.length, sentNow: false,
+                  target, message: `Gardée en attente, l'envoi vers Sori a échoué\u00a0: ${describe(e)}`,
                 } satisfies ExtensionMessage);
               }
               return;
@@ -302,35 +316,34 @@ export default defineBackground(() => {
               try {
                 const r = await sendCardsToAnki(settings, [card], (t) => audioOrNull(t, settings));
                 if (r.addedIds.length > 0) {
-                  const queue = await getQueue();
                   sendResponse({
-                    type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: true, target,
+                    type: 'ANKI_ADD_DONE', ok: true, queued: (await getQueue()).length, sentNow: true, target,
                   } satisfies ExtensionMessage);
                   return;
                 }
-                throw new Error(r.failures[0] || 'Anki did not accept the card');
+                throw new Error(r.failures[0] || "Anki n'a pas accepté la carte.");
               } catch (e) {
-                const queue = [...(await getQueue()), card];
-                await setQueue(queue);
+                const queued = await queue.update((q) => withCard(q, card));
                 sendResponse({
-                  type: 'ANKI_ADD_DONE', ok: false, queued: queue.length, sentNow: false,
-                  target, message: `Kept in queue — Anki send failed: ${describe(e)}`,
+                  type: 'ANKI_ADD_DONE', ok: false, queued: queued.length, sentNow: false,
+                  target, message: `Gardée en attente, l'envoi vers Anki a échoué\u00a0: ${describe(e)}`,
                 } satisfies ExtensionMessage);
                 return;
               }
             }
 
-            const queue = [...(await getQueue()), card];
-            await setQueue(queue);
+            const queued = await queue.update((q) => withCard(q, card));
             sendResponse({
-              type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: false, target,
+              type: 'ANKI_ADD_DONE', ok: true, queued: queued.length, sentNow: false, target,
             } satisfies ExtensionMessage);
             return;
           }
 
           // ANKI_SEND_ALL — flush the queue to the configured destination.
-          const queue = await getQueue();
-          if (queue.length === 0) {
+          // Send a snapshot; cards added during the send stay queued because
+          // only the ids handled here are removed, from a fresh read.
+          const snapshot = await getQueue();
+          if (snapshot.length === 0) {
             sendResponse({
               type: 'ANKI_SEND_ALL_DONE', ok: true, added: 0, failed: 0, remaining: 0, target,
             } satisfies ExtensionMessage);
@@ -342,15 +355,17 @@ export default defineBackground(() => {
           }
           const result =
             target === 'site'
-              ? await sendCardsToSite(settings.siteToken.trim(), queue, settings.soriDeckId)
-              : await sendCardsToAnki(settings, queue, (t) => audioOrNull(t, settings));
-          const remaining = queue.filter((c) => !result.addedIds.includes(c.id));
-          await setQueue(remaining);
+              ? await sendCardsToSite(settings.siteToken.trim(), snapshot, settings.soriDeckId)
+              : { ...(await sendCardsToAnki(settings, snapshot, (t) => audioOrNull(t, settings))), droppedIds: [] };
+          const remaining = await queue.update((q) =>
+            withoutIds(q, [...result.addedIds, ...result.droppedIds]),
+          );
           sendResponse({
             type: 'ANKI_SEND_ALL_DONE',
             ok: result.failed === 0,
             added: result.addedIds.length,
             failed: result.failed,
+            dropped: result.droppedIds.length,
             remaining: remaining.length,
             target,
             message: result.failures[0],
@@ -358,10 +373,10 @@ export default defineBackground(() => {
         } catch (e) {
           console.error('[Sori] flashcard op failed:', e);
           if (message.type === 'ANKI_SEND_ALL') {
-            const queue = await getQueue();
+            const cards = await getQueue();
             sendResponse({
-              type: 'ANKI_SEND_ALL_DONE', ok: false, added: 0, failed: queue.length,
-              remaining: queue.length, target, message: describe(e),
+              type: 'ANKI_SEND_ALL_DONE', ok: false, added: 0, failed: cards.length,
+              remaining: cards.length, target, message: describe(e),
             } satisfies ExtensionMessage);
           } else if (message.type === 'ANKI_ADD') {
             sendResponse({
@@ -389,14 +404,17 @@ export default defineBackground(() => {
 
 const ANKI_QUEUE_KEY = 'ankiQueue';
 
-async function getQueue(): Promise<AnkiCardDraft[]> {
-  const stored = await chrome.storage.local.get(ANKI_QUEUE_KEY);
-  return (stored[ANKI_QUEUE_KEY] as AnkiCardDraft[] | undefined) ?? [];
-}
+const queue = createQueue({
+  async read() {
+    const stored = await chrome.storage.local.get(ANKI_QUEUE_KEY);
+    return (stored[ANKI_QUEUE_KEY] as AnkiCardDraft[] | undefined) ?? [];
+  },
+  async write(cards) {
+    await chrome.storage.local.set({ [ANKI_QUEUE_KEY]: cards });
+  },
+});
 
-async function setQueue(queue: AnkiCardDraft[]): Promise<void> {
-  await chrome.storage.local.set({ [ANKI_QUEUE_KEY]: queue });
-}
+const getQueue = queue.read;
 
 // resolveTtsAudio wrapper that never throws — returns null when no audio.
 async function audioOrNull(text: string, settings: Settings): Promise<string | null> {

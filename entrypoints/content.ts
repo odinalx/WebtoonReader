@@ -542,9 +542,16 @@ async function sendAllCards(shadow: ShadowRoot) {
   const dest = targetName(resp.target);
   if (resp.ok && resp.failed === 0) {
     bar.innerHTML = `<span class="anki-count ok">${ICON.check}<span>${cards(resp.added, 'envoyée')} vers ${dest}</span></span>`;
-  } else if (resp.added > 0) {
-    bar.innerHTML = `<span class="anki-count warn">${cards(resp.added, 'envoyée')}, ${resp.failed} en échec · ${resp.remaining} encore en attente.</span>`;
-    setTimeout(() => void updateAnkiBar(shadow), 3000);
+  } else if (resp.added > 0 || resp.dropped) {
+    // Cards the site rejected as invalid left the queue: say so, or the
+    // count would silently shrink.
+    const dropped = resp.dropped
+      ? ` · ${cards(resp.dropped, 'refusée')} par Sori et retirée${resp.dropped > 1 ? 's' : ''} de la file`
+      : '';
+    const failedLeft = resp.failed - (resp.dropped ?? 0);
+    const failed = failedLeft > 0 ? `, ${failedLeft} en échec` : '';
+    bar.innerHTML = `<span class="anki-count warn">${cards(resp.added, 'envoyée')}${failed}${dropped} · ${resp.remaining} encore en attente.</span>`;
+    setTimeout(() => void updateAnkiBar(shadow), 4000);
   } else {
     const why =
       resp.message ||

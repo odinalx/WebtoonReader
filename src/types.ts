@@ -197,6 +197,7 @@ export interface AnkiSendAllDone {
   ok: boolean;
   added: number;
   failed: number;
+  dropped?: number;  // failures removed from the queue (the site rejected the card)
   remaining: number; // cards still queued (the failures)
   target: FlashcardTarget;
   message?: string;
