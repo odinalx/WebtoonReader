@@ -57,6 +57,11 @@ export default defineConfig({
       'http://localhost:8765/*',
       // Sori website API (account check + saving flashcards).
       `${siteOrigin()}/*`,
+      // Screenshot builds only (the site's scripts/screenshots/shoot.mjs):
+      // automation can't click the toolbar button, so it never gets
+      // activeTab, and captureVisibleTab then needs <all_urls>. Never set
+      // SORI_SCREENSHOTS for a release.
+      ...(process.env.SORI_SCREENSHOTS ? ['<all_urls>'] : []),
     ],
     web_accessible_resources: [
       {

@@ -170,7 +170,6 @@ export interface AccessInfo {
   email?: string;
   plan?: string;
   subscribed?: boolean;
-  freeScansLeft?: number;
   siteUrl: string; // site origin, for "open the website" links
 }
 

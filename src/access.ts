@@ -2,11 +2,11 @@ import { SITE_URL } from './config';
 import { getSettings } from './settings';
 import { fetchAccount, SiteApiError } from './site';
 
-// Access: scanning needs a valid Sori token. Free accounts scan too, on a
-// daily allowance the site enforces (it answers free_limit_reached once it is
-// spent); only the website deck requires a plan. The verdict is cached in
-// storage so we don't hit the site on every scan; a short offline grace period
-// keeps a flaky connection from locking a user out mid-session.
+// Access: scanning needs a valid Sori token on an account with a plan. There
+// is no free tier (the way in is a cheap first month), so a valid token on an
+// account without a plan is locked with `not-subscribed`. The verdict is
+// cached in storage so we don't hit the site on every scan; a short offline
+// grace period keeps a flaky connection from locking a user out mid-session.
 
 export type AccessReason = 'no-token' | 'invalid-token' | 'not-subscribed' | 'offline';
 
@@ -15,9 +15,8 @@ export interface AccessState {
   reason?: AccessReason;
   email?: string;
   plan?: string;
-  /** True on a paid plan: unlimited scans and the website deck. */
+  /** True on a paid plan. Without one the extension stays locked. */
   subscribed?: boolean;
-  freeScansLeft?: number;
   checkedAt: number; // when the site last gave a definitive answer
 }
 
@@ -45,14 +44,22 @@ export async function getAccess(force = false): Promise<AccessState> {
 
   try {
     const account = await fetchAccount(token);
-    const state: AccessState = {
-      ok: true,
-      email: account.email,
-      plan: account.subscribed ? account.plan : 'free',
-      subscribed: account.subscribed,
-      freeScansLeft: account.freeScansLeft,
-      checkedAt: Date.now(),
-    };
+    const state: AccessState = account.subscribed
+      ? {
+          ok: true,
+          email: account.email,
+          plan: account.plan,
+          subscribed: true,
+          checkedAt: Date.now(),
+        }
+      : {
+          ok: false,
+          reason: 'not-subscribed',
+          email: account.email,
+          plan: 'none',
+          subscribed: false,
+          checkedAt: Date.now(),
+        };
     await writeCache(state);
     return state;
   } catch (e) {
@@ -72,15 +79,15 @@ export async function getAccess(force = false): Promise<AccessState> {
 export function lockMessage(state: AccessState): string {
   switch (state.reason) {
     case 'no-token':
-      return `Sori needs a free account. Sign up at ${SITE_URL}, then paste your access token in the extension settings.`;
+      return `Connecte ton compte Sori\u00a0: crée un jeton d'accès sur ${SITE_URL}/account, puis colle-le dans les réglages de l'extension.`;
     case 'invalid-token':
-      return `Your Sori access token was rejected. Create a new one at ${SITE_URL}/account and paste it in the extension settings.`;
+      return `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account et colle-le dans les réglages de l'extension.`;
     case 'not-subscribed':
-      return `Saving words to your Sori deck is part of the paid plan. Upgrade at ${SITE_URL}/pricing; your words wait in the queue until then.`;
+      return `Scanner fait partie de l'abonnement Sori. Le premier mois est à 3,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
     case 'offline':
-      return `Could not verify your Sori subscription (site unreachable). Check your connection and try again.`;
+      return `Impossible de vérifier ton abonnement (site injoignable). Vérifie ta connexion et réessaie.`;
     default:
-      return `Sori is locked. Sign in on ${SITE_URL} and check your subscription.`;
+      return `Sori est verrouillé. Connecte-toi sur ${SITE_URL} et vérifie ton abonnement.`;
   }
 }
 

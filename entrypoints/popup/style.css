@@ -8,9 +8,9 @@
   --wkr-accent: #2f4bd8;
   --wkr-accent-strong: #2438a8;
   --wkr-accent-soft: #e4e8fb;
-  /* Warm paper, not cool grey — the single change that makes it read as Sori. */
-  --wkr-bg: #ffffff;
-  --wkr-surface: #f4f1e9;
+  /* Cream paper behind white cards, as on the site. */
+  --wkr-bg: #f4f1e9;
+  --wkr-surface: #ffffff;
   --wkr-text: #16141a;
   --wkr-muted: #6a6675;
   --wkr-border: rgba(20, 18, 26, 0.14);
@@ -18,137 +18,129 @@
 }
 
 body {
-  width: 280px;
-  min-height: 320px;
+  width: 300px;
   background: var(--wkr-bg);
   color: var(--wkr-text);
   font-family: "Pretendard Variable", Pretendard, system-ui, -apple-system, sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Same language as the website: cream paper, white cards with a hairline,
+   flat buttons that shrink a touch when pressed. */
 .app {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 24px 20px 20px;
   gap: 12px;
+  padding: 16px;
 }
 
-.logo {
-  display: flex; align-items: center; justify-content: center;
-  /* The mark is a rounded square and carries its own corners; the old 50%
-     was here to clip a circle and would now shave 소 on four sides. */
-  width: 56px; height: 56px;
-}
-
-.title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--wkr-accent-strong);
-  letter-spacing: 0.3px;
-}
-
-.sub {
-  font-size: 12px;
-  color: var(--wkr-muted);
-  text-align: center;
-  line-height: 1.5;
-}
-
-.scan-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 16px;
-  background: var(--wkr-accent);
-  border: 1px solid var(--wkr-accent);
-  color: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
+.top { display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-name { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.plan-chip {
+  font-size: 11px;
   font-weight: 600;
-  transition: background 0.15s;
-  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--wkr-accent-strong);
+  background: var(--wkr-accent-soft);
+  border-radius: 999px;
+  padding: 3px 9px;
 }
-.scan-btn:hover:not(:disabled) { background: var(--wkr-accent-strong); border-color: var(--wkr-accent-strong); }
-.scan-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.paywall {
-  width: 100%;
+.card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   background: var(--wkr-surface);
   border: 1px solid var(--wkr-border);
-  border-radius: 10px;
-  padding: 14px 12px;
-  margin-top: 4px;
+  border-radius: 16px;
+  padding: 16px;
 }
-.paywall-title { font-size: 13px; font-weight: 700; text-align: center; }
-.paywall-text {
-  font-size: 12px;
-  color: var(--wkr-muted);
-  text-align: center;
-  line-height: 1.5;
-}
-.paywall-actions { display: flex; flex-direction: column; gap: 6px; }
+.card-title { font-size: 16px; font-weight: 700; line-height: 1.3; }
+.card-text { font-size: 13px; color: var(--wkr-muted); line-height: 1.5; margin-bottom: 4px; }
 
-.free-meter {
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  font-size: 12px;
-  color: var(--wkr-muted);
-  text-align: center;
-}
-.free-upgrade {
-  background: none;
-  border: none;
-  padding: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
   font: inherit;
   font-weight: 600;
-  color: var(--wkr-accent);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:focus-visible, .btn-link:focus-visible { outline: 2px solid var(--wkr-accent); outline-offset: 2px; }
+.btn-primary { background: var(--wkr-accent); border-color: var(--wkr-accent-strong); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--wkr-accent-strong); }
+.btn-quiet { background: var(--wkr-surface); border-color: rgba(20, 18, 26, 0.24); color: var(--wkr-text); }
+.btn-quiet:hover:not(:disabled) { background: var(--wkr-bg); }
+.btn-big { padding: 14px; font-size: 15px; }
+
+.or { font-size: 12px; color: var(--wkr-muted); text-align: center; line-height: 1.5; margin-top: -2px; }
+
+.steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--wkr-surface);
+  border: 1px solid var(--wkr-border);
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.steps li { display: flex; align-items: center; gap: 10px; }
+.steps span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--wkr-accent-soft);
+  color: var(--wkr-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .error {
-  width: 100%;
   font-size: 12px;
   color: var(--wkr-error);
-  background: rgba(229, 72, 77, 0.08);
-  border-radius: 6px;
+  background: rgba(200, 65, 47, 0.08);
+  border-radius: 10px;
   padding: 8px 10px;
   line-height: 1.4;
 }
 
-.hint {
-  width: 100%;
-  font-size: 12px;
-  color: var(--wkr-muted);
-  border-top: 1px solid var(--wkr-border);
-  padding-top: 12px;
-  line-height: 1.7;
-}
-
-.hint strong { color: var(--wkr-text); display: block; margin-bottom: 4px; }
-
-.hint ol { padding-left: 16px; }
-
-.settings-link {
+.bottom {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 4px;
-  padding: 7px;
-  background: none;
-  border: 1px solid var(--wkr-border);
-  border-radius: 7px;
+  align-items: center;
+  gap: 8px;
   color: var(--wkr-muted);
   font-size: 12px;
-  cursor: pointer;
+  padding-top: 2px;
 }
-.settings-link:hover { color: var(--wkr-accent-strong); border-color: var(--wkr-accent); }
+.btn-link {
+  background: none;
+  border: none;
+  padding: 2px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--wkr-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(20, 18, 26, 0.2);
+  text-underline-offset: 3px;
+}
+.btn-link:hover:not(:disabled) { color: var(--wkr-accent-strong); text-decoration-color: currentColor; }
+.btn-link:disabled { opacity: 0.5; cursor: default; }
+.card .btn-link { align-self: center; margin-top: 2px; }

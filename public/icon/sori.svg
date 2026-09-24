@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- The site's favicon, exactly: the extension sits in the toolbar next to
-       the site's own tab, and the two should read as one product. -->
+  <!-- Sori's mark: a blue tile with an S from Bricolage Grotesque Bold, drawn
+       as a path so it looks the same without the font installed. The same
+       file is the site's favicon and the extension's icon source. -->
   <rect width="64" height="64" rx="14" fill="#2f4bd8"/>
-  <text x="32" y="46" text-anchor="middle"
-        font-family="'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
-        font-size="38" font-weight="700" fill="#f4f1e9">소</text>
+  <path fill="#f4f1e9" d="M32.03 50Q28.62 50 25.93 49.35Q23.24 48.69 21.33 47.36Q19.42 46.02 18.34 44.01Q17.27 41.99 17.11 39.38L23.71 37.23Q23.81 39.59 24.88 41.16Q25.96 42.73 27.94 43.46Q29.93 44.19 32.39 44.19Q34.75 44.19 36.37 43.62Q37.99 43.04 38.83 42.07Q39.67 41.1 39.67 39.95Q39.67 38.59 38.62 37.76Q37.57 36.92 35.77 36.34Q33.96 35.77 31.66 35.24Q29.1 34.67 26.61 33.94Q24.12 33.2 22.11 32.05Q20.1 30.9 18.92 29.07Q17.74 27.24 17.74 24.47Q17.74 21.27 19.34 18.94Q20.93 16.62 24.02 15.31Q27.11 14 31.45 14Q35.85 14 38.96 15.28Q42.07 16.56 43.8 18.89Q45.53 21.22 45.68 24.41L38.88 26.3Q38.88 24.67 38.36 23.47Q37.83 22.27 36.89 21.46Q35.95 20.65 34.56 20.23Q33.18 19.81 31.4 19.81Q29.36 19.81 27.87 20.33Q26.38 20.85 25.62 21.74Q24.86 22.63 24.86 23.84Q24.86 25.25 26.03 26.17Q27.21 27.08 29.17 27.66Q31.14 28.23 33.49 28.76Q35.74 29.23 38.07 29.93Q40.4 30.64 42.41 31.76Q44.43 32.89 45.66 34.8Q46.89 36.71 46.89 39.59Q46.89 42.73 45.21 45.08Q43.54 47.44 40.22 48.72Q36.89 50 32.03 50Z"/>
 </svg>

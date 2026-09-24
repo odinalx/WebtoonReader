@@ -10,9 +10,6 @@ export interface SiteAccount {
   name: string;
   plan: string;
   subscribed: boolean;
-  /** Scans left today on the free plan (free accounts only). */
-  freeScansLeft: number;
-  freeScansPerDay: number;
 }
 
 // Error carrying the HTTP status + the site's machine-readable `error` code
@@ -27,6 +24,12 @@ export class SiteApiError extends Error {
   }
 }
 
+const FRENCH_ERRORS: Record<string, string> = {
+  subscription_required: `Scanner fait partie de l'abonnement Sori. Le premier mois est à 3,99\u00a0€\u00a0: ${SITE_URL}/pricing`,
+  rate_limited: 'Trop de scans d\'un coup. Réessaie dans un moment.',
+  http_401: `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account.`,
+};
+
 async function request(token: string, path: string, init?: RequestInit): Promise<unknown> {
   let res: Response;
   try {
@@ -39,15 +42,19 @@ async function request(token: string, path: string, init?: RequestInit): Promise
       },
     });
   } catch {
-    throw new SiteApiError(`Could not reach ${SITE_URL}. Is the site up?`, 0, 'network');
+    throw new SiteApiError(`Impossible de joindre ${SITE_URL}. Vérifie ta connexion.`, 0, 'network');
   }
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
     const code = typeof body.error === 'string' ? body.error : `http_${res.status}`;
+    // The API speaks English (it also serves the app); the codes the reader
+    // can act on get French wording here.
+    const french = FRENCH_ERRORS[res.status === 401 ? 'http_401' : code];
     const message =
-      typeof body.message === 'string' ? body.message
+      french ? french
+      : typeof body.message === 'string' ? body.message
       : typeof body.error === 'string' ? body.error
-      : `Sori API error (HTTP ${res.status})`;
+      : `Erreur du site Sori (HTTP ${res.status})`;
     throw new SiteApiError(message, res.status, code);
   }
   return body;
@@ -61,8 +68,6 @@ export async function fetchAccount(token: string): Promise<SiteAccount> {
     name: String(body.name ?? ''),
     plan: String(body.plan ?? 'none'),
     subscribed: Boolean(body.subscribed),
-    freeScansLeft: Number(body.freeScansLeft ?? 0),
-    freeScansPerDay: Number(body.freeScansPerDay ?? 0),
   };
 }
 
@@ -81,7 +86,9 @@ export async function fetchAccount(token: string): Promise<SiteAccount> {
 export async function analyzeOnSite(token: string, text: string): Promise<AnalysisResult> {
   const body = (await request(token, '/api/analyze', {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    // The extension's readers are French, like the site: glosses and grammar
+    // notes come back in French. The API defaults to English for the app.
+    body: JSON.stringify({ text, lang: 'fr' }),
   })) as Partial<AnalysisResult>;
   return {
     text: String(body.text ?? ''),

@@ -105,7 +105,6 @@ export default defineBackground(() => {
           email: state.email,
           plan: state.plan,
           subscribed: state.subscribed,
-          freeScansLeft: state.freeScansLeft,
           siteUrl: SITE_URL,
         } satisfies ExtensionMessage);
       })();
@@ -121,38 +120,38 @@ export default defineBackground(() => {
 
       (async () => {
         try {
-          // Scanning needs a valid token; the site meters free accounts.
+          // Scanning needs a valid token on an account with a plan.
           const access = await getAccess();
           if (!access.ok) throw new Error(lockMessage(access));
 
           const windowId = sender.tab?.windowId;
-          if (windowId == null) throw new Error('Could not determine the active window.');
+          if (windowId == null) throw new Error("Impossible de trouver la fenêtre active.");
 
           // --- Capture ---
-          report('capturing screenshot', 0.1);
+          report('capture de l\'écran', 0.1);
           let dataUrl: string;
           try {
             dataUrl = await withTimeout(
               browser.tabs.captureVisibleTab(windowId, { format: 'png' }),
               CAPTURE_TIMEOUT_MS,
-              'Screenshot capture timed out.'
+              'La capture d\'écran a pris trop de temps.'
             );
           } catch (e) {
             throw new Error(
-              `Could not capture the page. Chrome blocks capture on some pages ` +
-                `(chrome://, the Web Store, PDFs). Details: ${describe(e)}`
+              `Impossible de capturer la page. Chrome bloque la capture sur certaines ` +
+                `pages (chrome://, le Web Store, les PDF). Détail\u00a0: ${describe(e)}`
             );
           }
 
           // --- Crop + preprocess ---
-          report('cropping image', 0.25);
+          report('recadrage', 0.25);
           let cropped: string;
           let preprocessed: string;
           try {
             cropped = await cropImage(dataUrl, message.rect);
             preprocessed = await preprocess(cropped);
           } catch (e) {
-            throw new Error(`Failed to process the captured image: ${describe(e)}`);
+            throw new Error(`Impossible de traiter l'image capturée\u00a0: ${describe(e)}`);
           }
 
           // --- OCR (local Tesseract) ---
@@ -161,11 +160,11 @@ export default defineBackground(() => {
             text = await tesseractOcr(preprocessed);
           } catch (e) {
             console.error('[Sori] OCR failed:', e);
-            throw new Error(`OCR failed: ${describe(e)}`);
+            throw new Error(`La lecture du texte a échoué\u00a0: ${describe(e)}`);
           }
 
           // --- Segmentation + translation + grammar (Sori server) ---
-          report('analyzing words', 0.8);
+          report('analyse des mots', 0.8);
           const analysis = await analyzeText(text);
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
@@ -191,7 +190,7 @@ export default defineBackground(() => {
           const access = await getAccess();
           if (!access.ok) throw new Error(lockMessage(access));
 
-          report('analyzing words', 0.8);
+          report('analyse des mots', 0.8);
           const analysis = await analyzeText(message.text);
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
@@ -415,10 +414,10 @@ async function audioOrNull(text: string, settings: Settings): Promise<string | n
 // ---------------------------------------------------------------------------
 
 async function tesseractOcr(preprocessed: string): Promise<string> {
-  report('starting OCR engine', 0.35);
-  await withTimeout(ensureOffscreen(), OFFSCREEN_TIMEOUT_MS, 'Starting the OCR engine timed out.');
+  report('démarrage de la lecture', 0.35);
+  await withTimeout(ensureOffscreen(), OFFSCREEN_TIMEOUT_MS, 'Le moteur de lecture a mis trop de temps à démarrer.');
 
-  report('sending to OCR engine', 0.4);
+  report('lecture du texte', 0.4);
   const ocr = (await withTimeout(
     chrome.runtime.sendMessage({
       type: 'OCR_REQUEST',
@@ -426,10 +425,10 @@ async function tesseractOcr(preprocessed: string): Promise<string> {
       imageDataUrl: preprocessed,
     } satisfies ExtensionMessage),
     OCR_TIMEOUT_MS,
-    'OCR timed out. Try a smaller / tighter crop.'
+    'La lecture a pris trop de temps. Essaie un cadre plus serré.'
   )) as ExtensionMessage | undefined;
 
-  if (!ocr) throw new Error('OCR engine did not respond (offscreen document not ready).');
+  if (!ocr) throw new Error('Le moteur de lecture ne répond pas. Recharge la page et réessaie.');
   if (ocr.type === 'OCR_ERROR') throw new Error(ocr.message);
   return ocr.type === 'OCR_RESULT' ? ocr.text : '';
 }
@@ -456,7 +455,7 @@ async function analyzeText(raw: string): Promise<AnalysisResult> {
   const { siteToken } = await getSettings();
   if (!siteToken) return { ...empty, text: raw };
 
-  report('translating', 0.85);
+  report('traduction', 0.85);
   try {
     return await analyzeOnSite(siteToken, raw);
   } catch (e) {
@@ -540,7 +539,7 @@ async function ensureOffscreen() {
   } catch (e) {
     // A concurrent scan may have created it already; that specific error is benign.
     if (!String(e).includes('Only a single offscreen document')) {
-      throw new Error(`Could not start the OCR engine: ${describe(e)}`);
+      throw new Error(`Impossible de démarrer le moteur de lecture\u00a0: ${describe(e)}`);
     }
   } finally {
     creating = null;
