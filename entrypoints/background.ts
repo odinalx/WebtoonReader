@@ -181,9 +181,9 @@ export default defineBackground(() => {
           }
 
           // --- OCR (local Tesseract) ---
-          let text = '';
+          let ocr: { text: string; uncertain: number[] } = { text: '', uncertain: [] };
           try {
-            text = await tesseractOcr(preprocessed);
+            ocr = await tesseractOcr(preprocessed);
           } catch (e) {
             console.error('[Sori] OCR failed:', e);
             throw new Error(`La lecture du texte a échoué\u00a0: ${describe(e)}`);
@@ -191,7 +191,7 @@ export default defineBackground(() => {
 
           // --- Segmentation + translation + grammar (Sori server) ---
           report('analyse des mots', 0.8);
-          const analysis = await analyzeText(text);
+          const analysis = await analyzeText(ocr.text, ocr.uncertain);
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
@@ -474,7 +474,9 @@ async function audioOrNull(text: string, settings: Settings): Promise<string | n
 // Local OCR (Tesseract in the offscreen document)
 // ---------------------------------------------------------------------------
 
-async function tesseractOcr(preprocessed: string): Promise<string> {
+async function tesseractOcr(
+  preprocessed: string
+): Promise<{ text: string; uncertain: number[] }> {
   report('démarrage de la lecture', 0.35);
   await withTimeout(ensureOffscreen(), OFFSCREEN_TIMEOUT_MS, 'Le moteur de lecture a mis trop de temps à démarrer.');
 
@@ -491,7 +493,9 @@ async function tesseractOcr(preprocessed: string): Promise<string> {
 
   if (!ocr) throw new Error('Le moteur de lecture ne répond pas. Recharge la page et réessaie.');
   if (ocr.type === 'OCR_ERROR') throw new Error(ocr.message);
-  return ocr.type === 'OCR_RESULT' ? ocr.text : '';
+  return ocr.type === 'OCR_RESULT'
+    ? { text: ocr.text, uncertain: ocr.uncertain ?? [] }
+    : { text: '', uncertain: [] };
 }
 
 /**
@@ -506,11 +510,15 @@ async function tesseractOcr(preprocessed: string): Promise<string> {
  * OCR stays local: it's free, works offline, and Tesseract handles the crisp
  * rendered text of a webtoon panel well.
  *
+ * `uncertain` is only passed for Tesseract output: it tells the server the
+ * text may hold look-alikes of syllables the model cannot print, and which
+ * syllables were read with low confidence. Selected page text sends none.
+ *
  * Empty text short-circuits. An error the site answered (or a network
  * failure) is rethrown with its French message; anything else degrades to
  * showing the recognised text with no analysis.
  */
-async function analyzeText(raw: string): Promise<AnalysisResult> {
+async function analyzeText(raw: string, uncertain?: number[]): Promise<AnalysisResult> {
   const empty = { text: '', sentenceTranslation: '', tone: '', words: [] };
   if (!raw?.trim()) return empty;
 
@@ -519,7 +527,7 @@ async function analyzeText(raw: string): Promise<AnalysisResult> {
 
   report('traduction', 0.85);
   try {
-    return await analyzeOnSite(siteToken, raw);
+    return await analyzeOnSite(siteToken, raw, uncertain);
   } catch (e) {
     console.error('[Sori] analysis failed:', e);
     // The site said no (expired plan, rate limit, revoked token, unreachable):

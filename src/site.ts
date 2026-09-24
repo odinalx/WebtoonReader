@@ -83,12 +83,18 @@ export async function fetchAccount(token: string): Promise<SiteAccount> {
  * OCR stays local. It's free, offline, and Tesseract is good at the crisp
  * rendered text of a webtoon panel.
  */
-export async function analyzeOnSite(token: string, text: string): Promise<AnalysisResult> {
+export async function analyzeOnSite(
+  token: string,
+  text: string,
+  uncertain?: number[]
+): Promise<AnalysisResult> {
   const body = (await request(token, '/api/analyze', {
     method: 'POST',
     // The extension's readers are French, like the site: glosses and grammar
     // notes come back in French. The API defaults to English for the app.
-    body: JSON.stringify({ text, lang: 'fr' }),
+    // `uncertain` (OCR scans only) turns on the server's repair of syllables
+    // Tesseract's model cannot print; `text` then comes back corrected.
+    body: JSON.stringify(uncertain ? { text, lang: 'fr', uncertain } : { text, lang: 'fr' }),
   })) as Partial<AnalysisResult>;
   return {
     text: String(body.text ?? ''),
