@@ -107,10 +107,10 @@ export function App() {
 
       {locked && access.reason === 'not-subscribed' ? (
         <section className="card">
-          <h1 className="card-title">Commence ton premier mois à 3,99&nbsp;€</h1>
+          <h1 className="card-title">Premier mois à 2,99&nbsp;€</h1>
           <p className="card-text">
-            Scanner fait partie de l'abonnement. Il débloque aussi la lecture sur le site
-            et tes cartes de révision.
+            Scanner fait partie de l'abonnement, qui débloque aussi la lecture sur le site
+            et tes cartes. Le premier mois à 2,99&nbsp;€ est réservé aux nouveaux comptes.
           </p>
           <button className="btn btn-primary" onClick={() => open('/pricing')}>
             Voir les formules
