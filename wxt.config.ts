@@ -34,6 +34,13 @@ function siteOrigin(): string {
 
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  vite: () => ({
+    define: {
+      // content.ts: the panel's shadow root is closed, except in screenshot
+      // builds where Playwright has to reach inside it.
+      __SORI_OPEN_SHADOW__: JSON.stringify(Boolean(process.env.SORI_SCREENSHOTS)),
+    },
+  }),
   manifest: {
     name: 'Sori',
     description: "Lis tes webtoons en coréen\u00a0: capture une bulle, comprends chaque mot, garde-les dans ton deck Sori.",
@@ -63,12 +70,8 @@ export default defineConfig({
       // SORI_SCREENSHOTS for a release.
       ...(process.env.SORI_SCREENSHOTS ? ['<all_urls>'] : []),
     ],
-    web_accessible_resources: [
-      {
-        // Worker + core wasm must be reachable from the extension origin.
-        resources: ['tesseract/*'],
-        matches: ['<all_urls>'],
-      },
-    ],
+    // No web_accessible_resources: the Tesseract worker, core and model are
+    // loaded by the offscreen document, which is already on the extension
+    // origin. Exposing them to every page only let sites fingerprint Sori.
   },
 });

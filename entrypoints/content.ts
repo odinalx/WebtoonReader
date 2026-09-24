@@ -308,8 +308,14 @@ const FONT_STACK = '"Pretendard Variable", Pretendard, system-ui, -apple-system,
 // stacking another one.
 let panelKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
+// The panel's shadow root is closed, so the page can't read the words, the
+// translation or the token-backed buttons through host.shadowRoot. This is
+// the extension's only handle on it.
+let panelShadow: ShadowRoot | null = null;
+
 function closePanel(shadow: ShadowRoot) {
   if (activePanel === shadow) activePanel = null;
+  if (panelShadow === shadow) panelShadow = null;
   if (panelKeyHandler) {
     document.removeEventListener('keydown', panelKeyHandler, true);
     panelKeyHandler = null;
@@ -318,9 +324,8 @@ function closePanel(shadow: ShadowRoot) {
 }
 
 function createPanel(): ShadowRoot {
-  const previous = document.getElementById('wkr-host');
-  if (previous?.shadowRoot) closePanel(previous.shadowRoot);
-  else previous?.remove();
+  if (panelShadow) closePanel(panelShadow);
+  document.getElementById('wkr-host')?.remove();
 
   const host = document.createElement('div');
   host.id = 'wkr-host';
@@ -331,7 +336,9 @@ function createPanel(): ShadowRoot {
   });
   document.body.appendChild(host);
 
-  const shadow = host.attachShadow({ mode: 'open' });
+  // Screenshot builds keep it open so Playwright can click inside the panel.
+  const shadow = host.attachShadow({ mode: __SORI_OPEN_SHADOW__ ? 'open' : 'closed' });
+  panelShadow = shadow;
   const styleEl = document.createElement('style');
   styleEl.textContent = STYLES;
   shadow.appendChild(styleEl);
@@ -738,7 +745,13 @@ async function tts(text: string) {
 // ---------------------------------------------------------------------------
 
 function esc(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Quotes too: some escaped values land inside attributes (title, aria-label).
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // "#rrggbb" + alpha → rgba()
