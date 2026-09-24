@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETTINGS, type ExtensionMessage, type Settings } from '../../src/types';
 import { getSettings, saveSettings, hasVoiceCreds } from '../../src/settings';
 import { fetchDecks, type SiteDeck } from '../../src/site';
+import { clearAccessCache } from '../../src/access';
 import { SITE_URL } from '../../src/config';
+import { CONNECT_PATH } from '../../src/connect';
 
 interface AccessView {
   ok: boolean;
@@ -11,29 +13,27 @@ interface AccessView {
   plan?: string;
 }
 
+const PLAN_NAMES: Record<string, string> = {
+  monthly: 'mensuel',
+  yearly: 'annuel',
+  lifetime: 'à vie',
+};
+
+const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '');
+
 export function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
   const [access, setAccess] = useState<AccessView | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [checking, setChecking] = useState(true);
   // The token as stored, not as typed: the deck list is fetched with it, and
   // refetching on every keystroke of a half-pasted token is pointless traffic.
   const [savedToken, setSavedToken] = useState('');
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const savedTokenRef = useRef('');
+  savedTokenRef.current = savedToken;
 
-  useEffect(() => {
-    getSettings().then((s) => {
-      setSettings(s);
-      setSavedToken(s.siteToken);
-    });
-    void refreshAccess(false);
-  }, []);
-
-  const update = (patch: Partial<Settings>) => {
-    setSettings((s) => ({ ...s, ...patch }));
-    setSaved(false);
-  };
-
-  const refreshAccess = async (force: boolean) => {
+  const refreshAccess = useCallback(async (force: boolean) => {
     setChecking(true);
     try {
       const resp = (await browser.runtime.sendMessage({
@@ -46,15 +46,58 @@ export function App() {
       setAccess(null);
     }
     setChecking(false);
+  }, []);
+
+  useEffect(() => {
+    getSettings().then((s) => {
+      setSettings(s);
+      setSavedToken(s.siteToken);
+    });
+    void refreshAccess(false);
+
+    // Connecting happens in a site tab: pick the new token up without a
+    // reload, and without touching the other fields someone may be editing.
+    const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area !== 'local' || !changes.settings) return;
+      const token = String((changes.settings.newValue as Partial<Settings> | undefined)?.siteToken ?? '');
+      if (token === savedTokenRef.current) return;
+      savedTokenRef.current = token;
+      setSavedToken(token);
+      setSettings((s) => ({ ...s, siteToken: token }));
+      void refreshAccess(true);
+    };
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => chrome.storage.onChanged.removeListener(onChanged);
+  }, [refreshAccess]);
+
+  const update = (patch: Partial<Settings>) => {
+    setSettings((s) => ({ ...s, ...patch }));
+    setSaved(false);
   };
 
   const onSave = async () => {
-    await saveSettings(settings);
+    const clean = { ...settings, siteToken: settings.siteToken.trim() };
+    await saveSettings(clean);
+    setSettings(clean);
     setSaved(true);
-    setSavedToken(settings.siteToken);
+    setSavedToken(clean.siteToken);
+    savedTokenRef.current = clean.siteToken;
     // Re-verify with the (possibly new) token so the status badge is honest.
     void refreshAccess(true);
   };
+
+  const onDisconnect = async () => {
+    // From storage, not state: unsaved edits elsewhere on the page stay unsaved.
+    const stored = await getSettings();
+    await saveSettings({ ...stored, siteToken: '' });
+    await clearAccessCache();
+    setSettings((s) => ({ ...s, siteToken: '' }));
+    setSavedToken('');
+    savedTokenRef.current = '';
+    void refreshAccess(true);
+  };
+
+  const connected = Boolean(access?.ok || access?.reason === 'not-subscribed');
 
   return (
     <div className="page">
@@ -62,47 +105,113 @@ export function App() {
         <span className="eyebrow">Dokhae · 독해</span>
         <h1>Réglages</h1>
         <p className="lead">
-          Connecte ton compte Dokhae ci-dessous. Les mots que tu captures vont
+          Relie l’extension à ton compte Dokhae. Les mots que tu captures vont
           dans ton deck Dokhae (ou dans Anki, si tu préfères).
         </p>
       </header>
 
-      <section>
+      <section aria-labelledby="account-title">
         <div className="sec-head">
-          <h2>Compte Dokhae</h2>
+          <h2 id="account-title">Compte Dokhae</h2>
           <AccessBadge access={access} checking={checking} />
         </div>
-        <ol className="steps hint">
-          <li>
-            Crée un compte gratuit sur{' '}
-            <a href={`${SITE_URL}/login`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}</a>.
-          </li>
-          <li>
-            Sur <a href={`${SITE_URL}/account`} target="_blank" rel="noreferrer">ta page compte</a>,
-            crée un <em>jeton d’accès</em>.
-          </li>
-          <li>Colle-le ici.</li>
-        </ol>
-        <label>
-          <span className="field-label">Jeton d’accès</span>
-          <input
-            type="password"
-            placeholder="sori_…"
-            value={settings.siteToken}
-            onChange={(e) => update({ siteToken: e.target.value })}
-          />
-        </label>
-        <div className="actions">
-          <button className="btn btn-primary" onClick={onSave} disabled={checking}>
-            {checking ? 'Vérification…' : 'Enregistrer et vérifier'}
-          </button>
-        </div>
-        {access && !access.ok && (
-          <p className="hint warn-hint">
-            {access.reason === 'no-token' && 'Aucun jeton pour l’instant. Crée un compte gratuit sur le site et colle ton jeton ici.'}
-            {access.reason === 'invalid-token' && 'Ce jeton a été refusé. Crées-en un nouveau sur ta page compte.'}
-            {access.reason === 'offline' && 'Impossible de joindre le site Dokhae pour vérifier. Vérifie ta connexion.'}
-          </p>
+
+        {connected && access ? (
+          <>
+            <div className="account-row">
+              <div className="account-id">
+                <span className="field-label">Connecté en tant que</span>
+                <strong>{access.email || 'compte Dokhae'}</strong>
+              </div>
+              {access.ok && access.plan ? (
+                <span className="badge on">Formule {PLAN_NAMES[access.plan] ?? access.plan}</span>
+              ) : null}
+            </div>
+            {access.reason === 'not-subscribed' && (
+              <div className="notice">
+                <p>
+                  Scanner fait partie de l’abonnement Dokhae. Pour un nouveau compte, le
+                  premier mois est à 2,99{NB}€.
+                </p>
+                <div className="actions">
+                  <a className="btn btn-primary" href={`${SITE_URL}/pricing`} target="_blank" rel="noreferrer">
+                    Voir les formules
+                  </a>
+                  <button className="btn btn-quiet" onClick={() => void refreshAccess(true)} disabled={checking}>
+                    {checking ? 'Vérification…' : `Déjà abonné${NB}? Actualiser`}
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="actions">
+              <a className="btn btn-quiet" href={`${SITE_URL}${CONNECT_PATH}`} target="_blank" rel="noreferrer">
+                Changer de compte
+              </a>
+              <button className="btn btn-quiet btn-danger" onClick={() => void onDisconnect()}>
+                Déconnecter
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {access?.reason === 'offline' ? (
+              <div className="notice warn-hint" role="alert">
+                <p>Impossible de joindre {SITE_HOST} pour vérifier ton compte. Vérifie ta connexion.</p>
+                <div className="actions">
+                  <button className="btn btn-quiet" onClick={() => void refreshAccess(true)} disabled={checking}>
+                    {checking ? 'Vérification…' : 'Réessayer'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {access?.reason === 'invalid-token' && (
+                  <p className="hint warn-hint" role="alert">
+                    Ton accès a expiré ou a été révoqué. Reconnecte l’extension.
+                  </p>
+                )}
+                <p className="hint">
+                  Un clic suffit{NB}: {SITE_HOST} s’ouvre dans un onglet et relie l’extension
+                  à ton compte. Pas encore de compte{NB}? Tu pourras le créer au passage.
+                </p>
+                <div className="actions">
+                  <a
+                    className="btn btn-primary"
+                    href={`${SITE_URL}${CONNECT_PATH}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Connecter mon compte
+                  </a>
+                </div>
+              </>
+            )}
+
+            <details className="paste" open={pasteOpen} onToggle={(e) => setPasteOpen((e.target as HTMLDetailsElement).open)}>
+              <summary>Coller un jeton</summary>
+              <p className="hint">
+                Si le bouton ne marche pas, crée un <em>jeton d’accès</em> sur{' '}
+                <a href={`${SITE_URL}/account`} target="_blank" rel="noreferrer">ta page compte</a>{' '}
+                et colle-le ici.
+              </p>
+              <label>
+                <span className="field-label">Jeton d’accès</span>
+                <input
+                  type="password"
+                  placeholder="sori_…"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={settings.siteToken}
+                  onChange={(e) => update({ siteToken: e.target.value })}
+                />
+              </label>
+              <div className="actions">
+                <button className="btn btn-primary" onClick={onSave} disabled={checking || !settings.siteToken.trim()}>
+                  {checking ? 'Vérification…' : 'Enregistrer et vérifier'}
+                </button>
+              </div>
+            </details>
+          </>
         )}
       </section>
 
@@ -257,16 +366,15 @@ export function App() {
 }
 
 function AccessBadge({ access, checking }: { access: AccessView | null; checking: boolean }) {
-  if (checking) return <span className="badge">vérification…</span>;
-  if (!access) return <span className="badge">inconnu</span>;
-  if (access.ok) {
-    return (
-      <span className="badge on">
-        {access.email ? `${access.email} · ${access.plan}` : access.plan}
-      </span>
-    );
-  }
-  return <span className="badge locked">verrouillé</span>;
+  if (checking) return <span className="badge" role="status">Vérification…</span>;
+  if (!access) return <span className="badge">État inconnu</span>;
+  if (access.ok) return <span className="badge ok">Connecté</span>;
+  const label =
+    access.reason === 'not-subscribed' ? 'Sans abonnement'
+    : access.reason === 'offline' ? 'Hors connexion'
+    : access.reason === 'invalid-token' ? 'Accès expiré'
+    : 'Non connecté';
+  return <span className="badge locked">{label}</span>;
 }
 
 /**

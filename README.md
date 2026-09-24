@@ -12,7 +12,7 @@ Drag-select a speech bubble and it will:
 > **Requires a Dokhae subscription.** The extension unlocks against a personal access token
 > from your [Dokhae](../WebtoonReader_Websites) account — it calls `GET /api/me` to confirm the
 > token is valid and the account is subscribed before it will scan. Create an account,
-> subscribe, and generate a token on `/account`, then paste it into the extension's Settings.
+> subscribe, then click "Connecter mon compte" in the extension's popup.
 > (OCR, translation, and dictionary lookups still run locally/against public endpoints — the
 > subscription is the gate, not a per-scan service.)
 
@@ -153,12 +153,15 @@ The extension is subscription-gated and won't scan until it's linked to a
 subscribed [Dokhae](../WebtoonReader_Websites) account:
 
 1. Create an account on the Dokhae site and **subscribe** (`/pricing`).
-2. Go to **`/account`** and generate a personal access token (`sori_…`). It's
-   shown once — copy it.
-3. Open the extension's **Settings** page (button in the popup) and paste the
-   token. The extension calls `GET /api/me` to confirm the token is valid and the
-   account is subscribed; the verdict is cached (with a short offline grace
-   period) so it doesn't re-check on every scan.
+2. Click **Connecter mon compte** in the popup (or in Settings). It opens
+   `/connect-extension` on the site, which hands a fresh token to the
+   extension (contract in [docs/connect-extension.md](docs/connect-extension.md)).
+3. Fallback: generate a token (`sori_…`) on **`/account`** and paste it under
+   Settings, **Coller un jeton**.
+
+Either way the extension calls `GET /api/me` to confirm the token is valid and
+the account is subscribed; the verdict is cached (with a short offline grace
+period) so it doesn't re-check on every scan.
 
 Captured words are saved to your **Dokhae deck** by default (`POST /api/cards`);
 choose **Anki** instead in Settings if you prefer local flashcards (see

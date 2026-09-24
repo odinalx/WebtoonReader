@@ -6,3 +6,9 @@
  * stays open, so automation can reach both.
  */
 declare const __SORI_SCREENSHOTS__: boolean;
+
+/**
+ * Origin of the Dokhae site (from WXT_SITE_URL), for manifest-time values such
+ * as a content script's match pattern. Runtime code reads src/config.ts.
+ */
+declare const __DOKHAE_SITE_ORIGIN__: string;

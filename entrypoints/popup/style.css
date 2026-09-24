@@ -15,6 +15,7 @@
   --wkr-muted: #6a6675;
   --wkr-border: rgba(20, 18, 26, 0.14);
   --wkr-error: #c8412f;
+  --wkr-celadon: #1f8a70;
 }
 
 body {
@@ -143,4 +144,22 @@ body {
 }
 .btn-link:hover:not(:disabled) { color: var(--wkr-accent-strong); text-decoration-color: currentColor; }
 .btn-link:disabled { opacity: 0.5; cursor: default; }
-.card .btn-link { align-self: center; margin-top: 2px; }
+.card-foot { font-size: 12px; color: var(--wkr-muted); text-align: center; line-height: 1.5; }
+.card-foot .btn-link { color: var(--wkr-accent-strong); }
+
+/* Who is signed in, under the steps: quiet, but there when you wonder. */
+.account {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 18px; font-size: 12px; color: var(--wkr-muted);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.dot-ok { width: 7px; height: 7px; border-radius: 50%; background: var(--wkr-celadon); flex: none; }
+
+.spinner {
+  width: 14px; height: 14px; flex: none;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  opacity: 0.8;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }

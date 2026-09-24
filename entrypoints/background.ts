@@ -5,21 +5,23 @@ import type {
   FlashcardTarget,
   SelectionRect,
 } from '../src/types';
-import { getSettings, hasVoiceCreds } from '../src/settings';
+import { getSettings, hasVoiceCreds, saveSettings } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
 import {
   analyzeOnSite,
+  fetchAccount,
   isRejectedCard,
   SiteApiError,
   sendCardToSite,
   sendCardsToSite,
 } from '../src/site';
 import { createQueue, withCard, withoutIds } from '../src/queue';
-import { clearAccessCache, deckLock, getAccess, lockMessage } from '../src/access';
+import { clearAccessCache, deckLock, getAccess, lockError, lockReason } from '../src/access';
 import { SITE_URL } from '../src/config';
 import { prepareForOcr } from '../src/ocrPrep';
+import { isConnectPage, TOKEN_RE } from '../src/connect';
 import type { Settings } from '../src/types';
 
 const OFFSCREEN_URL = 'offscreen.html';
@@ -118,6 +120,45 @@ export default defineBackground(() => {
     return undefined;
   });
 
+  // --- One-click connect: the site's /connect-extension page hands a token ---
+  // Only the connect content script sends this, and only from that page; the
+  // sender check keeps any other page (or content script) from swapping the
+  // account. The token is verified before it replaces the stored one, so a
+  // stale or revoked token never logs out a working install.
+  onMessage((msg: unknown, sender, sendResponse): true | undefined => {
+    const message = msg as ExtensionMessage;
+    if (message.type !== 'CONNECT_TOKEN') return undefined;
+    const done = (reply: Omit<Extract<ExtensionMessage, { type: 'CONNECT_DONE' }>, 'type'>) =>
+      sendResponse({ type: 'CONNECT_DONE', ...reply } satisfies ExtensionMessage);
+
+    if (
+      sender.id !== chrome.runtime.id ||
+      !isConnectPage(sender.url, SITE_URL) ||
+      !TOKEN_RE.test(message.token)
+    ) {
+      done({ ok: false, error: 'internal' });
+      return undefined;
+    }
+
+    (async () => {
+      try {
+        const account = await fetchAccount(message.token);
+        const settings = await getSettings();
+        await saveSettings({ ...settings, siteToken: message.token });
+        await clearAccessCache();
+        // Warm the cache with the verdict we already have.
+        await getAccess(true);
+        done({ ok: true, email: account.email, subscribed: account.subscribed });
+      } catch (e) {
+        console.warn('[Dokhae] connect failed:', e);
+        if (e instanceof SiteApiError && e.status === 401) done({ ok: false, error: 'invalid_token' });
+        else if (e instanceof SiteApiError && e.status === 0) done({ ok: false, error: 'network' });
+        else done({ ok: false, error: 'internal' });
+      }
+    })();
+    return true;
+  });
+
   // --- Paywall status for the popup / options page --------------------------
   onMessage(
     (msg: unknown, _sender, sendResponse): true | undefined => {
@@ -150,7 +191,7 @@ export default defineBackground(() => {
         try {
           // Scanning needs a valid token on an account with a plan.
           const access = await getAccess();
-          if (!access.ok) throw new Error(lockMessage(access));
+          if (!access.ok) throw lockError(access);
 
           const windowId = sender.tab?.windowId;
           if (windowId == null) throw new Error("Impossible de trouver la fenêtre active.");
@@ -196,7 +237,9 @@ export default defineBackground(() => {
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
           console.error('[Dokhae] capture pipeline failed:', e);
-          sendResponse({ type: 'CAPTURE_ERROR', message: describe(e) } satisfies ExtensionMessage);
+          sendResponse({
+            type: 'CAPTURE_ERROR', message: describe(e), reason: lockReason(e),
+          } satisfies ExtensionMessage);
         }
       })();
 
@@ -214,7 +257,7 @@ export default defineBackground(() => {
         try {
           // Same access rule as a scan.
           const access = await getAccess();
-          if (!access.ok) throw new Error(lockMessage(access));
+          if (!access.ok) throw lockError(access);
 
           report('analyse des mots', 0.8);
           const analysis = await analyzeText(message.text);
@@ -222,7 +265,9 @@ export default defineBackground(() => {
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
           console.error('[Dokhae] analyze-text pipeline failed:', e);
-          sendResponse({ type: 'CAPTURE_ERROR', message: describe(e) } satisfies ExtensionMessage);
+          sendResponse({
+            type: 'CAPTURE_ERROR', message: describe(e), reason: lockReason(e),
+          } satisfies ExtensionMessage);
         }
       })();
 
@@ -306,7 +351,7 @@ export default defineBackground(() => {
             if (target === 'site') {
               try {
                 const locked = deckLock(await getAccess());
-                if (locked) throw new Error(lockMessage(locked));
+                if (locked) throw lockError(locked);
                 await sendCardToSite(settings.siteToken.trim(), card, settings.soriDeckId);
                 sendResponse({
                   type: 'ANKI_ADD_DONE', ok: true, queued: (await getQueue()).length,
@@ -325,6 +370,7 @@ export default defineBackground(() => {
                 sendResponse({
                   type: 'ANKI_ADD_DONE', ok: false, queued: queued.length, sentNow: false,
                   target, message: `Gardée en attente, l'envoi vers Dokhae a échoué\u00a0: ${describe(e)}`,
+                  reason: lockReason(e),
                 } satisfies ExtensionMessage);
               }
               return;
@@ -371,7 +417,7 @@ export default defineBackground(() => {
           }
           if (target === 'site') {
             const locked = deckLock(await getAccess());
-            if (locked) throw new Error(lockMessage(locked));
+            if (locked) throw lockError(locked);
           }
           const result =
             target === 'site'
@@ -401,7 +447,7 @@ export default defineBackground(() => {
           } else if (message.type === 'ANKI_ADD') {
             sendResponse({
               type: 'ANKI_ADD_DONE', ok: false, queued: (await getQueue()).length,
-              sentNow: false, target, message: describe(e),
+              sentNow: false, target, message: describe(e), reason: lockReason(e),
             } satisfies ExtensionMessage);
           } else if (message.type === 'ANKI_CLEAR') {
             sendResponse({ type: 'ANKI_CLEAR_DONE', ok: false } satisfies ExtensionMessage);

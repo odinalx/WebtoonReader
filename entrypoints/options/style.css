@@ -69,6 +69,7 @@ h2 { font-size: 17px; font-weight: 700; }
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .badge.on { background: var(--wkr-accent-soft); color: var(--wkr-accent-strong); border-color: rgba(47, 75, 216, 0.3); }
+.badge.ok { background: rgba(31, 138, 112, 0.1); color: #176b57; border-color: rgba(31, 138, 112, 0.35); }
 .badge.locked { color: var(--wkr-error-strong); border-color: rgba(200, 65, 47, 0.3); }
 
 .hint { font-size: 14px; color: var(--wkr-muted); }
@@ -163,3 +164,37 @@ select:disabled { color: var(--wkr-muted); background: var(--wkr-surface); }
 .btn-quiet:hover:not(:disabled) { background: var(--wkr-surface); }
 
 .saved-note { color: var(--wkr-celadon); font-size: 14px; font-weight: 600; }
+a.btn { text-decoration: none; }
+a.btn-primary, a.btn-primary:hover { color: #fff; }
+a.btn-quiet, a.btn-quiet:hover { color: var(--wkr-text); }
+.btn-danger { color: var(--wkr-error-strong); }
+.btn-danger:hover:not(:disabled) { background: #fbeeeb; }
+
+/* Signed-in account: who, on which plan. */
+.account-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; background: var(--wkr-surface);
+  border: 1px solid var(--wkr-border); border-radius: 12px;
+}
+.account-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.account-id strong { font-weight: 600; overflow-wrap: anywhere; }
+
+.notice {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--wkr-accent-soft); border: 1px solid rgba(47, 75, 216, 0.25);
+  font-size: 14px;
+}
+.notice.warn-hint { background: #fbeeeb; }
+
+/* The paste-a-token fallback stays one click away, folded. */
+details.paste {
+  display: flex; flex-direction: column; gap: 12px;
+  border-top: 1px solid var(--wkr-border); padding-top: 12px;
+}
+details.paste[open] > * + * { margin-top: 12px; }
+details.paste summary {
+  cursor: pointer; font-size: 14px; font-weight: 600; color: var(--wkr-muted);
+  border-radius: 6px; width: fit-content;
+}
+details.paste summary:hover { color: var(--wkr-text); }
