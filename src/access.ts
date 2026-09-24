@@ -88,7 +88,7 @@ export function lockMessage(state: AccessState): string {
     case 'invalid-token':
       return `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account et colle-le dans les réglages de l'extension.`;
     case 'not-subscribed':
-      return `Scanner fait partie de l'abonnement Sori. Le premier mois est à 3,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
+      return `Scanner fait partie de l'abonnement Sori. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
     case 'offline':
       return `Impossible de vérifier ton abonnement (site injoignable). Vérifie ta connexion et réessaie.`;
     default:

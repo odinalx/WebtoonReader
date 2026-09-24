@@ -25,7 +25,7 @@ export class SiteApiError extends Error {
 }
 
 const FRENCH_ERRORS: Record<string, string> = {
-  subscription_required: `Scanner fait partie de l'abonnement Sori. Le premier mois est à 3,99\u00a0€\u00a0: ${SITE_URL}/pricing`,
+  subscription_required: `Scanner fait partie de l'abonnement Sori. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`,
   rate_limited: 'Trop de scans d\'un coup. Réessaie dans un moment.',
   http_401: `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account.`,
 };
