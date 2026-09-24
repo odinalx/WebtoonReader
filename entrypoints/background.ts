@@ -54,7 +54,7 @@ const onMessage = (listener: DecliningListener): void =>
 
 // Push a status line to the result panel (and the background console).
 function report(status: string, progress: number) {
-  console.log(`[Sori] ${status} (${Math.round(progress * 100)}%)`);
+  console.log(`[Dokhae] ${status} (${Math.round(progress * 100)}%)`);
   chrome.runtime
     .sendMessage({ type: 'OCR_PROGRESS', status, progress } satisfies ExtensionMessage)
     .catch(() => {});
@@ -63,7 +63,7 @@ function report(status: string, progress: number) {
 const CONTEXT_MENU_ID = 'wkr-analyze-selection';
 
 export default defineBackground(() => {
-  // --- Right-click "Analyser avec Sori" entry point ------------------------
+  // --- Right-click "Analyser avec Dokhae" entry point ------------------------
   // Shown for any selection: hiding it for non-Korean text took a content
   // script on every page. Clicking it grants activeTab, which lets us inject
   // the content script and hand it the text; the panel then runs the same
@@ -73,7 +73,7 @@ export default defineBackground(() => {
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
         id: CONTEXT_MENU_ID,
-        title: 'Analyser «\u00a0%s\u00a0» avec Sori',
+        title: 'Analyser «\u00a0%s\u00a0» avec Dokhae',
         contexts: ['selection'],
       });
     });
@@ -84,7 +84,7 @@ export default defineBackground(() => {
     const text = (info.selectionText ?? '').trim();
     if (!text) return;
     sendToTab(tab.id, { type: 'ANALYZE_SELECTION', text }).catch((e) =>
-      console.warn('[Sori] could not open the panel in this tab:', e),
+      console.warn('[Dokhae] could not open the panel in this tab:', e),
     );
   });
 
@@ -95,12 +95,12 @@ export default defineBackground(() => {
     sendToTab(message.tabId, { type: 'ACTIVATE_SCAN' })
       .then(() => sendResponse({ type: 'START_SCAN_DONE', ok: true } satisfies ExtensionMessage))
       .catch((e) => {
-        console.warn('[Sori] could not start a scan in this tab:', e);
+        console.warn('[Dokhae] could not start a scan in this tab:', e);
         sendResponse({
           type: 'START_SCAN_DONE',
           ok: false,
           message:
-            'Sori ne peut pas lire cette page. Chrome bloque les extensions sur ' +
+            'Dokhae ne peut pas lire cette page. Chrome bloque les extensions sur ' +
             'les pages chrome://, le Web Store et les PDF.',
         } satisfies ExtensionMessage);
       });
@@ -114,7 +114,7 @@ export default defineBackground(() => {
     (async () => {
       await ensureOffscreen();
       await chrome.runtime.sendMessage({ type: 'OCR_WARM', target: 'offscreen' } satisfies ExtensionMessage);
-    })().catch((e) => console.warn('[Sori] OCR warm-up failed:', e));
+    })().catch((e) => console.warn('[Dokhae] OCR warm-up failed:', e));
     return undefined;
   });
 
@@ -185,17 +185,17 @@ export default defineBackground(() => {
           try {
             ocr = await tesseractOcr(preprocessed);
           } catch (e) {
-            console.error('[Sori] OCR failed:', e);
+            console.error('[Dokhae] OCR failed:', e);
             throw new Error(`La lecture du texte a échoué\u00a0: ${describe(e)}`);
           }
 
-          // --- Segmentation + translation + grammar (Sori server) ---
+          // --- Segmentation + translation + grammar (Dokhae server) ---
           report('analyse des mots', 0.8);
           const analysis = await analyzeText(ocr.text, ocr.uncertain);
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Sori] capture pipeline failed:', e);
+          console.error('[Dokhae] capture pipeline failed:', e);
           sendResponse({ type: 'CAPTURE_ERROR', message: describe(e) } satisfies ExtensionMessage);
         }
       })();
@@ -221,7 +221,7 @@ export default defineBackground(() => {
 
           sendResponse({ type: 'CAPTURE_RESULT', analysis } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Sori] analyze-text pipeline failed:', e);
+          console.error('[Dokhae] analyze-text pipeline failed:', e);
           sendResponse({ type: 'CAPTURE_ERROR', message: describe(e) } satisfies ExtensionMessage);
         }
       })();
@@ -248,7 +248,7 @@ export default defineBackground(() => {
           } satisfies ExtensionMessage);
           sendResponse({ type: 'TTS_DONE', ok: true } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Sori] TTS failed:', e);
+          console.error('[Dokhae] TTS failed:', e);
           sendResponse({ type: 'TTS_DONE', ok: false, message: describe(e) } satisfies ExtensionMessage);
         }
       })();
@@ -301,7 +301,7 @@ export default defineBackground(() => {
               addedAt: Date.now(),
             };
 
-            // Website destination (default): save straight to the Sori deck.
+            // Website destination (default): save straight to the Dokhae deck.
             // On failure the card stays in the queue so it's never lost.
             if (target === 'site') {
               try {
@@ -317,14 +317,14 @@ export default defineBackground(() => {
                 if (isRejectedCard(e)) {
                   sendResponse({
                     type: 'ANKI_ADD_DONE', ok: false, queued: (await getQueue()).length,
-                    sentNow: false, target, message: 'Carte refusée par Sori (mot ou traduction invalide), elle n\'est pas gardée.',
+                    sentNow: false, target, message: 'Carte refusée par Dokhae (mot ou traduction invalide), elle n\'est pas gardée.',
                   } satisfies ExtensionMessage);
                   return;
                 }
                 const queued = await queue.update((q) => withCard(q, card));
                 sendResponse({
                   type: 'ANKI_ADD_DONE', ok: false, queued: queued.length, sentNow: false,
-                  target, message: `Gardée en attente, l'envoi vers Sori a échoué\u00a0: ${describe(e)}`,
+                  target, message: `Gardée en attente, l'envoi vers Dokhae a échoué\u00a0: ${describe(e)}`,
                 } satisfies ExtensionMessage);
               }
               return;
@@ -391,7 +391,7 @@ export default defineBackground(() => {
             message: result.failures[0],
           } satisfies ExtensionMessage);
         } catch (e) {
-          console.error('[Sori] flashcard op failed:', e);
+          console.error('[Dokhae] flashcard op failed:', e);
           if (message.type === 'ANKI_SEND_ALL') {
             const cards = await getQueue();
             sendResponse({
@@ -423,10 +423,10 @@ export default defineBackground(() => {
 // ---------------------------------------------------------------------------
 
 /**
- * Deliver a message to Sori's content script in a tab, injecting it first if
+ * Deliver a message to Dokhae's content script in a tab, injecting it first if
  * the page doesn't have it yet. Works only while the extension holds
  * activeTab for that tab (the popup was opened or the context menu used on
- * it), which is exactly when the user asked for Sori.
+ * it), which is exactly when the user asked for Dokhae.
  */
 async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void> {
   const present = await chrome.tabs
@@ -465,7 +465,7 @@ async function audioOrNull(text: string, settings: Settings): Promise<string | n
   try {
     return await resolveTtsAudio(text, settings);
   } catch (e) {
-    console.warn('[Sori] audio for Anki card failed:', e);
+    console.warn('[Dokhae] audio for Anki card failed:', e);
     return null;
   }
 }
@@ -499,7 +499,7 @@ async function tesseractOcr(
 }
 
 /**
- * Segment + translate + tag Korean text on the Sori server.
+ * Segment + translate + tag Korean text on the Dokhae server.
  *
  * This used to run entirely in-page: Kiwi's wasm in a sandboxed iframe (its
  * Emscripten glue needs `unsafe-eval`, which only a sandboxed page's CSP may
@@ -529,7 +529,7 @@ async function analyzeText(raw: string, uncertain?: number[]): Promise<AnalysisR
   try {
     return await analyzeOnSite(siteToken, raw, uncertain);
   } catch (e) {
-    console.error('[Sori] analysis failed:', e);
+    console.error('[Dokhae] analysis failed:', e);
     // The site said no (expired plan, rate limit, revoked token, unreachable):
     // show its French message instead of a silent, unanalysed result.
     if (e instanceof SiteApiError) {
@@ -558,7 +558,7 @@ async function resolveTtsAudio(text: string, settings: Settings): Promise<string
       const naverUrl = await naverWordAudioUrl(word);
       if (naverUrl) return await fetchAudioAsDataUrl(naverUrl);
     } catch (e) {
-      console.warn('[Sori] Naver dict audio failed:', e);
+      console.warn('[Dokhae] Naver dict audio failed:', e);
     }
   }
 
@@ -566,7 +566,7 @@ async function resolveTtsAudio(text: string, settings: Settings): Promise<string
     try {
       return await clovaTts(text, settings);
     } catch (e) {
-      console.warn('[Sori] Clova Voice failed, falling back to Google TTS:', e);
+      console.warn('[Dokhae] Clova Voice failed, falling back to Google TTS:', e);
     }
   }
 

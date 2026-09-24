@@ -1,4 +1,4 @@
-// Turning Tesseract's word boxes into the text sent to the Sori server.
+// Turning Tesseract's word boxes into the text sent to the Dokhae server.
 //
 // Lives outside the offscreen document so it can be tested without loading
 // Tesseract.

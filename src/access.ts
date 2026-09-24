@@ -2,7 +2,7 @@ import { SITE_URL } from './config';
 import { getSettings } from './settings';
 import { fetchAccount, SiteApiError } from './site';
 
-// Access: scanning needs a valid Sori token on an account with a plan. There
+// Access: scanning needs a valid Dokhae token on an account with a plan. There
 // is no free tier (the way in is a cheap first month), so a valid token on an
 // account without a plan is locked with `not-subscribed`. The verdict is
 // cached in storage so we don't hit the site on every scan; a short offline
@@ -84,15 +84,15 @@ export async function getAccess(force = false): Promise<AccessState> {
 export function lockMessage(state: AccessState): string {
   switch (state.reason) {
     case 'no-token':
-      return `Connecte ton compte Sori\u00a0: crée un jeton d'accès sur ${SITE_URL}/account, puis colle-le dans les réglages de l'extension.`;
+      return `Connecte ton compte Dokhae\u00a0: crée un jeton d'accès sur ${SITE_URL}/account, puis colle-le dans les réglages de l'extension.`;
     case 'invalid-token':
       return `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account et colle-le dans les réglages de l'extension.`;
     case 'not-subscribed':
-      return `Scanner fait partie de l'abonnement Sori. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
+      return `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`;
     case 'offline':
       return `Impossible de vérifier ton abonnement (site injoignable). Vérifie ta connexion et réessaie.`;
     default:
-      return `Sori est verrouillé. Connecte-toi sur ${SITE_URL} et vérifie ton abonnement.`;
+      return `Dokhae est verrouillé. Connecte-toi sur ${SITE_URL} et vérifie ton abonnement.`;
   }
 }
 

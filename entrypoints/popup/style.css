@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Sori's palette, taken verbatim from the site's styles.css so the extension
+/* Dokhae's palette, taken verbatim from the site's styles.css so the extension
    and the tab it saves into don't look like two products. The variable names
    stay --wkr-* : renaming them would touch every rule in the file for no gain
    the user can see. */

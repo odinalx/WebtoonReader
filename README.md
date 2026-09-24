@@ -6,11 +6,11 @@ Drag-select a speech bubble and it will:
 - **OCR** the Korean text (bundled Tesseract `best` model — runs offline on your machine, no API keys),
 - **translate** the sentence and break it into words **colored by part of speech**,
 - give each word a **pronunciation** (audio), meanings, dictionary form, and **Naver dictionary** links,
-- let you **save words to your Sori deck** (default) or **send them to Anki** as richly-formatted
+- let you **save words to your Dokhae deck** (default) or **send them to Anki** as richly-formatted
   cards (word + audio + example sentence + audio), via the AnkiConnect add-on.
 
-> **Requires a Sori subscription.** The extension unlocks against a personal access token
-> from your [Sori](../WebtoonReader_Websites) account — it calls `GET /api/me` to confirm the
+> **Requires a Dokhae subscription.** The extension unlocks against a personal access token
+> from your [Dokhae](../WebtoonReader_Websites) account — it calls `GET /api/me` to confirm the
 > token is valid and the account is subscribed before it will scan. Create an account,
 > subscribe, and generate a token on `/account`, then paste it into the extension's Settings.
 > (OCR, translation, and dictionary lookups still run locally/against public endpoints — the
@@ -45,14 +45,14 @@ without ever leaving the page.
 It's built to be **self-contained on the recognition side**. The OCR engine and
 its Korean language model are bundled in the extension, so recognition happens on
 your own machine with no API keys and no network round-trip. Word segmentation,
-translation, and part-of-speech tagging run on the Sori server (shared with the
+translation, and part-of-speech tagging run on the Dokhae server (shared with the
 mobile app); pronunciation and dictionary lookups use public endpoints. An
 optional paid upgrade (Naver Cloud) exists but is off by default.
 
-Access is gated by a **Sori subscription**: the extension verifies your account
-token against the [Sori website](../WebtoonReader_Websites) before scanning, and
-saves captured words to your Sori deck (with Anki as an alternative destination).
-See [Connecting your Sori account](#connecting-your-sori-account-required) below.
+Access is gated by a **Dokhae subscription**: the extension verifies your account
+token against the [Dokhae website](../WebtoonReader_Websites) before scanning, and
+saves captured words to your Dokhae deck (with Anki as an alternative destination).
+See [Connecting your Dokhae account](#connecting-your-sori-account-required) below.
 
 ---
 
@@ -77,7 +77,7 @@ A scan flows through four stages:
    allowed — and the worker, wasm core, and language data are all bundled locally
    so strict site CSPs can't block them.
 
-3. **Translation & grammar (Sori server).** The recognized text is `POST`ed to
+3. **Translation & grammar (Dokhae server).** The recognized text is `POST`ed to
    `/api/analyze`, which cleans OCR artifacts, splits the text into word-units
    with the Kiwi morphological analyzer, translates the sentence, and looks each
    word up for its English meaning, **part of speech**, and dictionary form.
@@ -126,7 +126,7 @@ neutral grey:
 6. Pin the **W** icon from the toolbar's puzzle-piece menu.
 
 > The zip already contains the OCR model, so recognition needs no download and no
-> network. Analysis (words, translation, grammar) calls the Sori API, so that
+> network. Analysis (words, translation, grammar) calls the Dokhae API, so that
 > step needs a connection.
 
 ### Option B — Build from source
@@ -147,12 +147,12 @@ extension's card in `chrome://extensions`.
 
 ---
 
-## Connecting your Sori account (required)
+## Connecting your Dokhae account (required)
 
 The extension is subscription-gated and won't scan until it's linked to a
-subscribed [Sori](../WebtoonReader_Websites) account:
+subscribed [Dokhae](../WebtoonReader_Websites) account:
 
-1. Create an account on the Sori site and **subscribe** (`/pricing`).
+1. Create an account on the Dokhae site and **subscribe** (`/pricing`).
 2. Go to **`/account`** and generate a personal access token (`sori_…`). It's
    shown once — copy it.
 3. Open the extension's **Settings** page (button in the popup) and paste the
@@ -160,7 +160,7 @@ subscribed [Sori](../WebtoonReader_Websites) account:
    account is subscribed; the verdict is cached (with a short offline grace
    period) so it doesn't re-check on every scan.
 
-Captured words are saved to your **Sori deck** by default (`POST /api/cards`);
+Captured words are saved to your **Dokhae deck** by default (`POST /api/cards`);
 choose **Anki** instead in Settings if you prefer local flashcards (see
 [Anki setup](#anki-setup-one-time)).
 
@@ -183,7 +183,7 @@ created and renamed there, not here. Left alone, words land in your first deck.
 6. **Build flashcards.** Click **Add to flashcards** on a word — it joins a
    session queue (the panel shows the count). Keep scanning and adding; when
    you're done, hit **Send all** to push the whole batch to your chosen
-   destination (your Sori deck by default, or Anki). (Or enable "send each card
+   destination (your Dokhae deck by default, or Anki). (Or enable "send each card
    immediately" in Settings.)
 7. **Scan again** without reopening the popup using the button in the panel.
 
@@ -192,7 +192,7 @@ created and renamed there, not here. Left alone, words land in your first deck.
 ## Anki setup (one time, optional)
 
 Anki is the **alternative** flashcard destination — skip this section if you're
-saving to your Sori deck (the default). To send to Anki instead, pick it in
+saving to your Dokhae deck (the default). To send to Anki instead, pick it in
 Settings; cards are delivered through the
 [**AnkiConnect**](https://ankiweb.net/shared/info/2055492159) add-on.
 
@@ -227,11 +227,11 @@ optional "send immediately" toggle in Settings.
 | Language | TypeScript | |
 | UI | React (popup & options) + vanilla DOM in a Shadow DOM (in-page panel) | Shadow DOM isolates the panel from page styles |
 | OCR | [Tesseract.js](https://github.com/naptha/tesseract.js) v5, `kor` `best` model | Runs in an **offscreen document**; worker + wasm + model bundled locally |
-| Segmentation, translation & POS | [Sori website](../WebtoonReader_Websites) API (`POST /api/analyze`) | Kiwi word-units + sentence translation + per-word dictionary/part-of-speech, shared with the mobile app |
+| Segmentation, translation & POS | [Dokhae website](../WebtoonReader_Websites) API (`POST /api/analyze`) | Kiwi word-units + sentence translation + per-word dictionary/part-of-speech, shared with the mobile app |
 | Pronunciation | Naver dict audio → Clova Voice (optional) → Google TTS | Played from the offscreen document; embedded in Anki cards |
 | Dictionary | Naver / Daum / NIKL KRDict deep links | |
-| Account / paywall | [Sori website](../WebtoonReader_Websites) API (`GET /api/me`) | Subscription-gated; token created on `/account` |
-| Flashcards | Sori deck (`POST /api/cards`, default) or [AnkiConnect](https://foosoft.net/projects/anki-connect/) | Anki path auto-creates the note type, stores audio media, adds notes |
+| Account / paywall | [Dokhae website](../WebtoonReader_Websites) API (`GET /api/me`) | Subscription-gated; token created on `/account` |
+| Flashcards | Dokhae deck (`POST /api/cards`, default) or [AnkiConnect](https://foosoft.net/projects/anki-connect/) | Anki path auto-creates the note type, stores audio media, adds notes |
 | Optional | Naver Cloud (CLOVA OCR + Clova Voice) | Paid, hidden by default |
 
 **Architecture at a glance:**
