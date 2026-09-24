@@ -17,13 +17,25 @@ const HANGUL_WHITELIST = (() => {
   return s + '0123456789 .,!?~·…"\'';
 })();
 
-// Words the recognizer reports below this confidence (0–100) are dropped rather
-// than displayed — bubble-outline hallucinations come back with low confidence.
-const MIN_WORD_CONFIDENCE = 50;
+// Below this confidence (0–100) a token is treated as noise, but only when it
+// carries no Hangul. Bubble outlines and tails come back as low-confidence
+// quotes, dots and tildes; real syllables often do too (체 at 3, 너 at 47 on a
+// bold webtoon font) and dropping those cut words in half ("너대체" → "대").
+// A doubtful syllable is still better than a missing one: the server's
+// segmenter and translator read it in context.
+const MIN_NOISE_CONFIDENCE = 50;
+const HANGUL = /[\uac00-\ud7a3]/;
 
-// Rebuild the recognized text from per-word data, keeping only confident words
-// and preserving line structure. Falls back to the raw text if the structured
-// block output is unavailable.
+interface OcrWord {
+  text?: string;
+  confidence?: number;
+  bbox?: { x0: number; x1: number; y0: number; y1: number };
+}
+
+// Rebuild the text line by line from Tesseract's words. Tesseract often
+// reports each syllable of a bold line as its own "word", so words are joined
+// with a space only where the image shows a real gap (more than a third of
+// the line height), not after every token.
 function confidentText(data: { text?: string; blocks?: unknown }): string {
   const blocks = data?.blocks;
   if (!Array.isArray(blocks) || blocks.length === 0) return (data?.text ?? '').trim();
@@ -31,11 +43,25 @@ function confidentText(data: { text?: string; blocks?: unknown }): string {
   for (const block of blocks as any[]) {
     for (const para of block?.paragraphs ?? []) {
       for (const line of para?.lines ?? []) {
-        const kept = (line?.words ?? [])
-          .filter((w: any) => typeof w?.confidence === 'number' && w.confidence >= MIN_WORD_CONFIDENCE)
-          .map((w: any) => String(w?.text ?? '').trim())
-          .filter(Boolean);
-        if (kept.length) lines.push(kept.join(' '));
+        const words = ((line?.words ?? []) as OcrWord[]).filter((w) => {
+          const t = String(w?.text ?? '').trim();
+          if (!t) return false;
+          return HANGUL.test(t) || (w.confidence ?? 0) >= MIN_NOISE_CONFIDENCE;
+        });
+        let out = '';
+        let prev: OcrWord | null = null;
+        for (const w of words) {
+          const t = String(w.text).trim();
+          if (prev?.bbox && w.bbox) {
+            const height = Math.max(1, w.bbox.y1 - w.bbox.y0);
+            out += w.bbox.x0 - prev.bbox.x1 > height / 3 ? ' ' : '';
+          } else if (prev) {
+            out += ' ';
+          }
+          out += t;
+          prev = w;
+        }
+        if (out) lines.push(out);
       }
     }
   }
