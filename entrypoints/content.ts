@@ -430,8 +430,8 @@ function renderResults(shadow: ShadowRoot, analysis: AnalysisResult) {
     <div class="anki-bar"></div>
   `;
 
-  // Flowing Korean phrase: each word is a chip outlined in its part-of-speech
-  // colour. Chips are real buttons so Tab and Enter reach every word.
+  // Flowing Korean phrase: each word is underlined in its part-of-speech
+  // colour. Words are real buttons so Tab and Enter reach every one.
   const phraseEl = body.querySelector('.phrase') as HTMLElement;
   analysis.words.forEach((info) => {
     const color = posColor(info.pos);
@@ -903,19 +903,21 @@ const STYLES = `
   }
   .phrase-head { display: flex; align-items: center; justify-content: space-between; margin: -2px -4px -2px 0; }
   .speak-all:hover { color: var(--wkr-accent-strong); background: var(--wkr-bg); }
-  .phrase { display: flex; flex-wrap: wrap; gap: 6px; word-break: keep-all; }
+  .phrase { display: block; line-height: 2.1; word-break: keep-all; }
 
-  /* Word chips: white face, outline in the part-of-speech colour. */
+  /* Words read as a sentence; a dotted underline in the part-of-speech colour
+     carries the grammar, the same as on the website. */
   .w {
-    font-family: inherit; font-size: 18px; font-weight: 600; line-height: 1.3;
-    color: var(--wkr-text); background: var(--wkr-bg);
-    border: 1px solid var(--c, var(--wkr-border-edge));
-    border-radius: 12px; padding: 4px 10px; cursor: pointer;
-    transition: transform 0.08s ease, background-color 0.12s ease;
+    font-family: inherit; font-size: 19px; font-weight: 500; line-height: 1.3;
+    color: var(--wkr-text); background: none; border: 0;
+    border-radius: 5px; padding: 0 2px; margin: 0 5px 0 0; cursor: pointer;
+    text-decoration: underline dotted 2px;
+    text-decoration-color: var(--c, var(--wkr-border-edge));
+    text-underline-offset: 6px;
+    transition: background-color 0.12s ease;
   }
-  .w:hover { background: var(--wkr-surface); }
-  .w:active { transform: scale(0.97); }
-  .w.active { background: var(--wkr-accent-soft); }
+  .w:hover { background: rgba(20, 18, 26, 0.06); }
+  .w.active { background: var(--wkr-accent-soft); font-weight: 700; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 4px 10px; }
   .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--wkr-muted); }
