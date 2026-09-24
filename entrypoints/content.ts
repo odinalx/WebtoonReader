@@ -1,5 +1,6 @@
 import type { ExtensionMessage, SelectionRect, AnalysisResult, WordInfo } from '../src/types';
 import { romanize } from '../src/romanize';
+import { phraseParts } from '../src/phrase';
 
 let scanActive = false;
 let activePanel: ShadowRoot | null = null;
@@ -433,7 +434,14 @@ function renderResults(shadow: ShadowRoot, analysis: AnalysisResult) {
   // Flowing Korean phrase: each word is underlined in its part-of-speech
   // colour. Words are real buttons so Tab and Enter reach every one.
   const phraseEl = body.querySelector('.phrase') as HTMLElement;
-  analysis.words.forEach((info) => {
+  // Words sit inside the original sentence, so its commas, question and
+  // exclamation marks stay visible between them (they are not clickable).
+  phraseParts(analysis.text, analysis.words.map((w) => w.surface)).forEach((part) => {
+    if (part.kind === 'gap') {
+      phraseEl.appendChild(document.createTextNode(part.text));
+      return;
+    }
+    const info = analysis.words[part.index]!;
     const color = posColor(info.pos);
     const w = document.createElement('button');
     w.type = 'button';
@@ -907,10 +915,11 @@ const STYLES = `
 
   /* Words read as a sentence; a dotted underline in the part-of-speech colour
      carries the grammar, the same as on the website. */
+  .phrase { font-size: 19px; color: var(--wkr-text); }
   .w {
     font-family: inherit; font-size: 19px; font-weight: 500; line-height: 1.3;
     color: var(--wkr-text); background: none; border: 0;
-    border-radius: 5px; padding: 0 2px; margin: 0 5px 0 0; cursor: pointer;
+    border-radius: 5px; padding: 0 2px; margin: 0; cursor: pointer;
     text-decoration: underline dotted 2px;
     text-decoration-color: var(--c, var(--wkr-border-edge));
     text-underline-offset: 6px;
