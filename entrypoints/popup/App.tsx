@@ -70,16 +70,23 @@ export function App() {
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) throw new Error('Aucun onglet actif.');
-      await browser.tabs.sendMessage(tab.id, { type: 'ACTIVATE_SCAN' } satisfies ExtensionMessage);
-      window.close();
-    } catch (e) {
-      const msg = String(e);
-      // Content script not injected yet (the page loaded before the extension).
-      if (msg.includes('Could not establish connection')) {
-        setError('Recharge la page, puis réessaie.');
-      } else {
-        setError(msg);
+      // The background injects Sori into the tab (activeTab, granted by
+      // opening this popup) and opens the scan overlay.
+      const resp = (await browser.runtime.sendMessage({
+        type: 'START_SCAN',
+        tabId: tab.id,
+      } satisfies ExtensionMessage)) as ExtensionMessage | undefined;
+      if (resp?.type === 'START_SCAN_DONE' && resp.ok) {
+        window.close();
+        return;
       }
+      throw new Error(
+        resp?.type === 'START_SCAN_DONE' && resp.message
+          ? resp.message
+          : "L'extension ne répond pas. Réessaie.",
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
       setStatus('error');
     }
   };

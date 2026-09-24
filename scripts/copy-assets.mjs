@@ -20,13 +20,19 @@ cpSync(
   resolve(destDir, 'worker.min.js')
 );
 
-// 2. All core variants (.wasm + their .js loaders) — Tesseract auto-selects
-//    the right one (simd / lstm) when corePath points at this directory.
+// 2. Core. tesseract.js 5 imports a single self-contained `*.wasm.js` (the
+//    wasm is inlined as base64), picked by getCore.js: the worker runs with
+//    OEM 1 (LSTM only), so it loads the SIMD LSTM build, or the plain LSTM
+//    build on a CPU without SIMD. The bare .wasm files, the non-LSTM builds
+//    and the `tesseract-core*.js` loaders are never requested: leaving them
+//    out saves about 25 MB unpacked.
+const CORES = ['tesseract-core-simd-lstm.wasm.js', 'tesseract-core-lstm.wasm.js'];
 const coreDir = resolve(root, 'node_modules/tesseract.js-core');
-for (const f of readdirSync(coreDir)) {
-  if (f.startsWith('tesseract-core') && (f.endsWith('.js') || f.endsWith('.wasm'))) {
-    cpSync(resolve(coreDir, f), resolve(destDir, f));
-  }
+for (const f of CORES) cpSync(resolve(coreDir, f), resolve(destDir, f));
+// Drop files earlier versions of this script copied.
+const keep = new Set(['worker.min.js', 'kor.traineddata.gz', ...CORES]);
+for (const f of readdirSync(destDir)) {
+  if (!keep.has(f)) rmSync(resolve(destDir, f), { force: true });
 }
 
 // 3. Korean language data (BEST model, ~15 MB — most accurate) bundled locally

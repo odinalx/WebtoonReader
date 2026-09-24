@@ -9,9 +9,17 @@ import { getSettings, hasVoiceCreds } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
-import { analyzeOnSite, sendCardToSite, sendCardsToSite } from '../src/site';
-import { deckLock, getAccess, lockMessage } from '../src/access';
+import {
+  analyzeOnSite,
+  isRejectedCard,
+  SiteApiError,
+  sendCardToSite,
+  sendCardsToSite,
+} from '../src/site';
+import { createQueue, withCard, withoutIds } from '../src/queue';
+import { clearAccessCache, deckLock, getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
+import { prepareForOcr } from '../src/ocrPrep';
 import type { Settings } from '../src/types';
 
 const OFFSCREEN_URL = 'offscreen.html';
@@ -55,18 +63,19 @@ function report(status: string, progress: number) {
 const CONTEXT_MENU_ID = 'wkr-analyze-selection';
 
 export default defineBackground(() => {
-  // --- Right-click "Analyze selection" entry point -------------------------
-  // The item only shows when text is selected; clicking it forwards the
-  // selected text to the content script, which drives the same result panel
-  // as a scan (skipping capture/OCR).
-  // Created hidden — the content script reveals it (SET_MENU_VISIBLE) only when
-  // the current selection contains Hangul, since Chrome can't filter by content.
+  // --- Right-click "Analyser avec Sori" entry point ------------------------
+  // Shown for any selection: hiding it for non-Korean text took a content
+  // script on every page. Clicking it grants activeTab, which lets us inject
+  // the content script and hand it the text; the panel then runs the same
+  // pipeline as a scan, minus capture and OCR.
   chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-      id: CONTEXT_MENU_ID,
-      title: 'Analyze with Sori',
-      contexts: ['selection'],
-      visible: false,
+    // removeAll first: an update would otherwise keep the old hidden entry.
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: CONTEXT_MENU_ID,
+        title: 'Analyser «\u00a0%s\u00a0» avec Sori',
+        contexts: ['selection'],
+      });
     });
   });
 
@@ -74,19 +83,38 @@ export default defineBackground(() => {
     if (info.menuItemId !== CONTEXT_MENU_ID || tab?.id == null) return;
     const text = (info.selectionText ?? '').trim();
     if (!text) return;
-    chrome.tabs
-      .sendMessage(tab.id, { type: 'ANALYZE_SELECTION', text } satisfies ExtensionMessage)
-      .catch(() => {
-        // Content script not injected (e.g. page loaded before the extension).
-      });
+    sendToTab(tab.id, { type: 'ANALYZE_SELECTION', text }).catch((e) =>
+      console.warn('[Sori] could not open the panel in this tab:', e),
+    );
   });
 
+  // --- Popup "Scanner": inject into the active tab, open the overlay --------
+  onMessage((msg: unknown, _sender, sendResponse): true | undefined => {
+    const message = msg as ExtensionMessage;
+    if (message.type !== 'START_SCAN') return undefined;
+    sendToTab(message.tabId, { type: 'ACTIVATE_SCAN' })
+      .then(() => sendResponse({ type: 'START_SCAN_DONE', ok: true } satisfies ExtensionMessage))
+      .catch((e) => {
+        console.warn('[Sori] could not start a scan in this tab:', e);
+        sendResponse({
+          type: 'START_SCAN_DONE',
+          ok: false,
+          message:
+            'Sori ne peut pas lire cette page. Chrome bloque les extensions sur ' +
+            'les pages chrome://, le Web Store et les PDF.',
+        } satisfies ExtensionMessage);
+      });
+    return true;
+  });
+
+  // --- Scan overlay opened: start the OCR engine while the user frames ---
   onMessage((msg: unknown): true | undefined => {
     const message = msg as ExtensionMessage;
-    if (message.type !== 'SET_MENU_VISIBLE') return undefined;
-    // browser.* rather than chrome.*: the polyfill's version returns a promise,
-    // which is what the .catch() below has always assumed.
-    browser.contextMenus.update(CONTEXT_MENU_ID, { visible: message.visible }).catch(() => {});
+    if (message.type !== 'OCR_WARM' || message.target) return undefined;
+    (async () => {
+      await ensureOffscreen();
+      await chrome.runtime.sendMessage({ type: 'OCR_WARM', target: 'offscreen' } satisfies ExtensionMessage);
+    })().catch((e) => console.warn('[Sori] OCR warm-up failed:', e));
     return undefined;
   });
 
@@ -145,11 +173,9 @@ export default defineBackground(() => {
 
           // --- Crop + preprocess ---
           report('recadrage', 0.25);
-          let cropped: string;
           let preprocessed: string;
           try {
-            cropped = await cropImage(dataUrl, message.rect);
-            preprocessed = await preprocess(cropped);
+            preprocessed = await prepareCapture(dataUrl, message.rect);
           } catch (e) {
             throw new Error(`Impossible de traiter l'image capturée\u00a0: ${describe(e)}`);
           }
@@ -252,10 +278,10 @@ export default defineBackground(() => {
           target = settings.flashcardTarget;
 
           if (message.type === 'ANKI_QUEUE') {
-            const queue = await getQueue();
+            const cards = await getQueue();
             sendResponse({
               type: 'ANKI_QUEUE_INFO',
-              count: queue.length,
+              count: cards.length,
               autoSend: settings.ankiAutoSend,
               target,
             } satisfies ExtensionMessage);
@@ -263,7 +289,7 @@ export default defineBackground(() => {
           }
 
           if (message.type === 'ANKI_CLEAR') {
-            await setQueue([]);
+            await queue.update(() => []);
             sendResponse({ type: 'ANKI_CLEAR_DONE', ok: true } satisfies ExtensionMessage);
             return;
           }
@@ -287,11 +313,18 @@ export default defineBackground(() => {
                   sentNow: true, target,
                 } satisfies ExtensionMessage);
               } catch (e) {
-                const queue = [...(await getQueue()), card];
-                await setQueue(queue);
+                // A card the site rejects as invalid would fail forever: don't keep it.
+                if (isRejectedCard(e)) {
+                  sendResponse({
+                    type: 'ANKI_ADD_DONE', ok: false, queued: (await getQueue()).length,
+                    sentNow: false, target, message: 'Carte refusée par Sori (mot ou traduction invalide), elle n\'est pas gardée.',
+                  } satisfies ExtensionMessage);
+                  return;
+                }
+                const queued = await queue.update((q) => withCard(q, card));
                 sendResponse({
-                  type: 'ANKI_ADD_DONE', ok: false, queued: queue.length, sentNow: false,
-                  target, message: `Kept in queue — saving to Sori failed: ${describe(e)}`,
+                  type: 'ANKI_ADD_DONE', ok: false, queued: queued.length, sentNow: false,
+                  target, message: `Gardée en attente, l'envoi vers Sori a échoué\u00a0: ${describe(e)}`,
                 } satisfies ExtensionMessage);
               }
               return;
@@ -303,35 +336,34 @@ export default defineBackground(() => {
               try {
                 const r = await sendCardsToAnki(settings, [card], (t) => audioOrNull(t, settings));
                 if (r.addedIds.length > 0) {
-                  const queue = await getQueue();
                   sendResponse({
-                    type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: true, target,
+                    type: 'ANKI_ADD_DONE', ok: true, queued: (await getQueue()).length, sentNow: true, target,
                   } satisfies ExtensionMessage);
                   return;
                 }
-                throw new Error(r.failures[0] || 'Anki did not accept the card');
+                throw new Error(r.failures[0] || "Anki n'a pas accepté la carte.");
               } catch (e) {
-                const queue = [...(await getQueue()), card];
-                await setQueue(queue);
+                const queued = await queue.update((q) => withCard(q, card));
                 sendResponse({
-                  type: 'ANKI_ADD_DONE', ok: false, queued: queue.length, sentNow: false,
-                  target, message: `Kept in queue — Anki send failed: ${describe(e)}`,
+                  type: 'ANKI_ADD_DONE', ok: false, queued: queued.length, sentNow: false,
+                  target, message: `Gardée en attente, l'envoi vers Anki a échoué\u00a0: ${describe(e)}`,
                 } satisfies ExtensionMessage);
                 return;
               }
             }
 
-            const queue = [...(await getQueue()), card];
-            await setQueue(queue);
+            const queued = await queue.update((q) => withCard(q, card));
             sendResponse({
-              type: 'ANKI_ADD_DONE', ok: true, queued: queue.length, sentNow: false, target,
+              type: 'ANKI_ADD_DONE', ok: true, queued: queued.length, sentNow: false, target,
             } satisfies ExtensionMessage);
             return;
           }
 
           // ANKI_SEND_ALL — flush the queue to the configured destination.
-          const queue = await getQueue();
-          if (queue.length === 0) {
+          // Send a snapshot; cards added during the send stay queued because
+          // only the ids handled here are removed, from a fresh read.
+          const snapshot = await getQueue();
+          if (snapshot.length === 0) {
             sendResponse({
               type: 'ANKI_SEND_ALL_DONE', ok: true, added: 0, failed: 0, remaining: 0, target,
             } satisfies ExtensionMessage);
@@ -343,15 +375,17 @@ export default defineBackground(() => {
           }
           const result =
             target === 'site'
-              ? await sendCardsToSite(settings.siteToken.trim(), queue, settings.soriDeckId)
-              : await sendCardsToAnki(settings, queue, (t) => audioOrNull(t, settings));
-          const remaining = queue.filter((c) => !result.addedIds.includes(c.id));
-          await setQueue(remaining);
+              ? await sendCardsToSite(settings.siteToken.trim(), snapshot, settings.soriDeckId)
+              : { ...(await sendCardsToAnki(settings, snapshot, (t) => audioOrNull(t, settings))), droppedIds: [] };
+          const remaining = await queue.update((q) =>
+            withoutIds(q, [...result.addedIds, ...result.droppedIds]),
+          );
           sendResponse({
             type: 'ANKI_SEND_ALL_DONE',
             ok: result.failed === 0,
             added: result.addedIds.length,
             failed: result.failed,
+            dropped: result.droppedIds.length,
             remaining: remaining.length,
             target,
             message: result.failures[0],
@@ -359,10 +393,10 @@ export default defineBackground(() => {
         } catch (e) {
           console.error('[Sori] flashcard op failed:', e);
           if (message.type === 'ANKI_SEND_ALL') {
-            const queue = await getQueue();
+            const cards = await getQueue();
             sendResponse({
-              type: 'ANKI_SEND_ALL_DONE', ok: false, added: 0, failed: queue.length,
-              remaining: queue.length, target, message: describe(e),
+              type: 'ANKI_SEND_ALL_DONE', ok: false, added: 0, failed: cards.length,
+              remaining: cards.length, target, message: describe(e),
             } satisfies ExtensionMessage);
           } else if (message.type === 'ANKI_ADD') {
             sendResponse({
@@ -385,19 +419,46 @@ export default defineBackground(() => {
 });
 
 // ---------------------------------------------------------------------------
+// Content script, injected on demand
+// ---------------------------------------------------------------------------
+
+/**
+ * Deliver a message to Sori's content script in a tab, injecting it first if
+ * the page doesn't have it yet. Works only while the extension holds
+ * activeTab for that tab (the popup was opened or the context menu used on
+ * it), which is exactly when the user asked for Sori.
+ */
+async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void> {
+  const present = await chrome.tabs
+    .sendMessage(tabId, { type: 'PING' } satisfies ExtensionMessage)
+    .then((r) => (r as ExtensionMessage | undefined)?.type === 'PONG')
+    .catch(() => false);
+  if (!present) {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content-scripts/content.js'],
+    });
+  }
+  await chrome.tabs.sendMessage(tabId, message);
+}
+
+// ---------------------------------------------------------------------------
 // Anki queue persistence
 // ---------------------------------------------------------------------------
 
 const ANKI_QUEUE_KEY = 'ankiQueue';
 
-async function getQueue(): Promise<AnkiCardDraft[]> {
-  const stored = await chrome.storage.local.get(ANKI_QUEUE_KEY);
-  return (stored[ANKI_QUEUE_KEY] as AnkiCardDraft[] | undefined) ?? [];
-}
+const queue = createQueue({
+  async read() {
+    const stored = await chrome.storage.local.get(ANKI_QUEUE_KEY);
+    return (stored[ANKI_QUEUE_KEY] as AnkiCardDraft[] | undefined) ?? [];
+  },
+  async write(cards) {
+    await chrome.storage.local.set({ [ANKI_QUEUE_KEY]: cards });
+  },
+});
 
-async function setQueue(queue: AnkiCardDraft[]): Promise<void> {
-  await chrome.storage.local.set({ [ANKI_QUEUE_KEY]: queue });
-}
+const getQueue = queue.read;
 
 // resolveTtsAudio wrapper that never throws — returns null when no audio.
 async function audioOrNull(text: string, settings: Settings): Promise<string | null> {
@@ -445,8 +506,9 @@ async function tesseractOcr(preprocessed: string): Promise<string> {
  * OCR stays local: it's free, works offline, and Tesseract handles the crisp
  * rendered text of a webtoon panel well.
  *
- * Empty text short-circuits, and a failed call degrades to showing the
- * recognised text with no analysis, exactly as the local path used to.
+ * Empty text short-circuits. An error the site answered (or a network
+ * failure) is rethrown with its French message; anything else degrades to
+ * showing the recognised text with no analysis.
  */
 async function analyzeText(raw: string): Promise<AnalysisResult> {
   const empty = { text: '', sentenceTranslation: '', tone: '', words: [] };
@@ -460,6 +522,14 @@ async function analyzeText(raw: string): Promise<AnalysisResult> {
     return await analyzeOnSite(siteToken, raw);
   } catch (e) {
     console.error('[Sori] analysis failed:', e);
+    // The site said no (expired plan, rate limit, revoked token, unreachable):
+    // show its French message instead of a silent, unanalysed result.
+    if (e instanceof SiteApiError) {
+      // The cached verdict said "subscribed", the server disagrees: drop the
+      // cache so the popup rechecks and shows the paywall.
+      if (e.code === 'subscription_required' || e.status === 401) await clearAccessCache();
+      throw e;
+    }
     return { ...empty, text: raw };
   }
 }
@@ -571,46 +641,32 @@ function describe(e: unknown): string {
 // Image processing
 // ---------------------------------------------------------------------------
 
-async function cropImage(dataUrl: string, rect: SelectionRect): Promise<string> {
+/**
+ * Crop the selection out of the screenshot and ready it for Tesseract in one
+ * canvas pass: crop, upscale x2 when small (Tesseract wants glyphs around
+ * 30px tall), then the border cleanup of src/ocrPrep.ts. Encoded once.
+ */
+async function prepareCapture(dataUrl: string, rect: SelectionRect): Promise<string> {
   const dpr = rect.devicePixelRatio;
   const x = Math.round(rect.x * dpr);
   const y = Math.round(rect.y * dpr);
   const w = Math.max(1, Math.round(rect.width * dpr));
   const h = Math.max(1, Math.round(rect.height * dpr));
+  const scale = w < 400 ? 2 : 1;
 
-  const bitmap = await dataUrlToBitmap(dataUrl);
-  const canvas = new OffscreenCanvas(w, h);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, x, y, w, h, 0, 0, w, h);
+  const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+  const canvas = new OffscreenCanvas(w * scale, h * scale);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, x, y, w, h, 0, 0, w * scale, h * scale);
+  bitmap.close();
+
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const clean = prepareForOcr(pixels.data, canvas.width, canvas.height);
+  canvas.width = clean.width;
+  canvas.height = clean.height;
+  ctx.putImageData(new ImageData(clean.data, clean.width, clean.height), 0, 0);
   return blobToDataUrl(await canvas.convertToBlob({ type: 'image/png' }));
-}
-
-async function preprocess(dataUrl: string): Promise<string> {
-  const bitmap = await dataUrlToBitmap(dataUrl);
-  const scale = bitmap.width < 400 ? 2 : 1;
-  const w = bitmap.width * scale;
-  const h = bitmap.height * scale;
-  const canvas = new OffscreenCanvas(w, h);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-
-  const id = ctx.getImageData(0, 0, w, h);
-  const d = id.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    const v = Math.min(255, Math.max(0, (g - 128) * 1.4 + 128));
-    d[i] = d[i + 1] = d[i + 2] = v;
-  }
-  ctx.putImageData(id, 0, 0);
-  return blobToDataUrl(await canvas.convertToBlob({ type: 'image/png' }));
-}
-
-async function dataUrlToBitmap(dataUrl: string): Promise<ImageBitmap> {
-  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return createImageBitmap(new Blob([bytes], { type: 'image/png' }));
 }
 
 async function blobToDataUrl(blob: Blob): Promise<string> {

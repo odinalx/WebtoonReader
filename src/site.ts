@@ -154,9 +154,17 @@ export async function sendCardToSite(
 
 export interface SiteSendResult {
   addedIds: string[]; // draft ids accepted by the site (incl. duplicates)
+  droppedIds: string[]; // draft ids the site rejected as invalid (422): retrying won't help
   failed: number;
   failures: string[]; // "word: reason" for each failure
 }
+
+/** The site rejected the card itself (422), not the moment: resending won't help. */
+export function isRejectedCard(e: unknown): boolean {
+  return e instanceof SiteApiError && e.status === 422;
+}
+
+export const REJECTED_CARD_NOTICE = 'refusée par Sori (mot ou traduction invalide), retirée de la file';
 
 /** Send a batch of queued cards to the site; mirrors sendCardsToAnki's shape. */
 export async function sendCardsToSite(
@@ -165,16 +173,22 @@ export async function sendCardsToSite(
   deckId = ''
 ): Promise<SiteSendResult> {
   const addedIds: string[] = [];
+  const droppedIds: string[] = [];
   const failures: string[] = [];
   for (const card of cards) {
     try {
       await sendCardToSite(token, card, deckId);
       addedIds.push(card.id);
     } catch (e) {
-      failures.push(`${card.word}: ${e instanceof Error ? e.message : String(e)}`);
+      if (isRejectedCard(e)) {
+        droppedIds.push(card.id);
+        failures.push(`${card.word}\u00a0: ${REJECTED_CARD_NOTICE}`);
+      } else {
+        failures.push(`${card.word}\u00a0: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
   }
-  return { addedIds, failed: failures.length, failures };
+  return { addedIds, droppedIds, failed: failures.length, failures };
 }
 
 function dedupe(items: string[]): string[] {

@@ -34,9 +34,15 @@ function siteOrigin(): string {
 
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  vite: () => ({
+    define: {
+      // See src/globals.d.ts.
+      __SORI_SCREENSHOTS__: JSON.stringify(Boolean(process.env.SORI_SCREENSHOTS)),
+    },
+  }),
   manifest: {
     name: 'Sori',
-    description: 'Read Korean webtoons — capture a panel, get the words, save them to your Sori deck',
+    description: "Lis tes webtoons en coréen\u00a0: capture une bulle, comprends chaque mot, garde-les dans ton deck Sori.",
     version: '0.1.1',
     // Tesseract compiles a .wasm core; MV3's default CSP (script-src 'self')
     // blocks WebAssembly.instantiate. 'wasm-unsafe-eval' re-allows it.
@@ -46,7 +52,9 @@ export default defineConfig({
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
     },
-    permissions: ['activeTab', 'scripting', 'storage', 'tabs', 'offscreen', 'contextMenus'],
+    // No 'tabs': nothing reads a tab's URL or title, and it adds a
+    // "browsing history" warning at install.
+    permissions: ['activeTab', 'scripting', 'storage', 'offscreen', 'contextMenus'],
     host_permissions: [
       // Google TTS fallback only — translation itself moved to the Sori server.
       'https://translate.google.com/*',
@@ -63,12 +71,8 @@ export default defineConfig({
       // SORI_SCREENSHOTS for a release.
       ...(process.env.SORI_SCREENSHOTS ? ['<all_urls>'] : []),
     ],
-    web_accessible_resources: [
-      {
-        // Worker + core wasm must be reachable from the extension origin.
-        resources: ['tesseract/*'],
-        matches: ['<all_urls>'],
-      },
-    ],
+    // No web_accessible_resources: the Tesseract worker, core and model are
+    // loaded by the offscreen document, which is already on the extension
+    // origin. Exposing them to every page only let sites fingerprint Sori.
   },
 });

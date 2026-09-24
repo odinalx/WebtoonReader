@@ -40,10 +40,10 @@ async function invoke<T = unknown>(url: string, action: string, params: unknown)
     });
   } catch {
     throw new Error(
-      'Could not reach Anki. Open desktop Anki with the AnkiConnect add-on installed.'
+      'Impossible de joindre Anki. Ouvre Anki sur ton ordinateur avec le module AnkiConnect installé.'
     );
   }
-  if (!res.ok) throw new Error(`AnkiConnect HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`AnkiConnect a répondu HTTP ${res.status}.`);
   const data = (await res.json()) as AnkiConnectResponse;
   if (data.error) throw new Error(data.error);
   return data.result as T;

@@ -95,6 +95,26 @@ export interface ActivateScan {
   type: 'ACTIVATE_SCAN';
 }
 
+// popup -> background: inject the content script into this tab (activeTab)
+// and open the scan overlay there.
+export interface StartScan {
+  type: 'START_SCAN';
+  tabId: number;
+}
+export interface StartScanDone {
+  type: 'START_SCAN_DONE';
+  ok: boolean;
+  message?: string;
+}
+
+// background -> content script: is Sori already injected in this tab?
+export interface Ping {
+  type: 'PING';
+}
+export interface Pong {
+  type: 'PONG';
+}
+
 // background -> content script (user picked "Analyze selection" from the
 // right-click menu — open the panel and analyze this already-selected text)
 export interface AnalyzeSelection {
@@ -107,14 +127,6 @@ export interface AnalyzeSelection {
 export interface AnalyzeTextRequest {
   type: 'ANALYZE_TEXT';
   text: string;
-}
-
-// content script -> background: show/hide the "Analyze selection" menu item.
-// Chrome can't filter context menus by content, so the content script reports
-// whether the current selection contains Hangul and we toggle visibility.
-export interface SetMenuVisible {
-  type: 'SET_MENU_VISIBLE';
-  visible: boolean;
 }
 
 // background -> offscreen document (OCR)
@@ -130,6 +142,14 @@ export interface OcrResult {
 export interface OcrError {
   type: 'OCR_ERROR';
   message: string;
+}
+
+// content -> background -> offscreen: the scan overlay opened, so start the
+// OCR engine now (worker, wasm core, Korean model) while the user frames a
+// bubble, instead of after the capture.
+export interface OcrWarm {
+  type: 'OCR_WARM';
+  target?: 'offscreen';
 }
 
 // offscreen -> all contexts (progress while OCR runs)
@@ -197,6 +217,7 @@ export interface AnkiSendAllDone {
   ok: boolean;
   added: number;
   failed: number;
+  dropped?: number;  // failures removed from the queue (the site rejected the card)
   remaining: number; // cards still queued (the failures)
   target: FlashcardTarget;
   message?: string;
@@ -226,9 +247,12 @@ export type ExtensionMessage =
   | AccessCheckRequest
   | AccessInfo
   | ActivateScan
+  | StartScan
+  | StartScanDone
+  | Ping
+  | Pong
   | AnalyzeSelection
   | AnalyzeTextRequest
-  | SetMenuVisible
   | CaptureRequest
   | CaptureResult
   | CaptureError
@@ -236,6 +260,7 @@ export type ExtensionMessage =
   | OcrResult
   | OcrError
   | OcrProgress
+  | OcrWarm
   | TtsRequest
   | TtsDone
   | TtsPlay
