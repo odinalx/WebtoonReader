@@ -36,9 +36,8 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   vite: () => ({
     define: {
-      // content.ts: the panel's shadow root is closed, except in screenshot
-      // builds where Playwright has to reach inside it.
-      __SORI_OPEN_SHADOW__: JSON.stringify(Boolean(process.env.SORI_SCREENSHOTS)),
+      // See src/globals.d.ts.
+      __SORI_SCREENSHOTS__: JSON.stringify(Boolean(process.env.SORI_SCREENSHOTS)),
     },
   }),
   manifest: {
@@ -53,7 +52,9 @@ export default defineConfig({
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
     },
-    permissions: ['activeTab', 'scripting', 'storage', 'tabs', 'offscreen', 'contextMenus'],
+    // No 'tabs': nothing reads a tab's URL or title, and it adds a
+    // "browsing history" warning at install.
+    permissions: ['activeTab', 'scripting', 'storage', 'offscreen', 'contextMenus'],
     host_permissions: [
       // Google TTS fallback only — translation itself moved to the Sori server.
       'https://translate.google.com/*',

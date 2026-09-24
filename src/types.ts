@@ -95,6 +95,26 @@ export interface ActivateScan {
   type: 'ACTIVATE_SCAN';
 }
 
+// popup -> background: inject the content script into this tab (activeTab)
+// and open the scan overlay there.
+export interface StartScan {
+  type: 'START_SCAN';
+  tabId: number;
+}
+export interface StartScanDone {
+  type: 'START_SCAN_DONE';
+  ok: boolean;
+  message?: string;
+}
+
+// background -> content script: is Sori already injected in this tab?
+export interface Ping {
+  type: 'PING';
+}
+export interface Pong {
+  type: 'PONG';
+}
+
 // background -> content script (user picked "Analyze selection" from the
 // right-click menu — open the panel and analyze this already-selected text)
 export interface AnalyzeSelection {
@@ -107,14 +127,6 @@ export interface AnalyzeSelection {
 export interface AnalyzeTextRequest {
   type: 'ANALYZE_TEXT';
   text: string;
-}
-
-// content script -> background: show/hide the "Analyze selection" menu item.
-// Chrome can't filter context menus by content, so the content script reports
-// whether the current selection contains Hangul and we toggle visibility.
-export interface SetMenuVisible {
-  type: 'SET_MENU_VISIBLE';
-  visible: boolean;
 }
 
 // background -> offscreen document (OCR)
@@ -235,9 +247,12 @@ export type ExtensionMessage =
   | AccessCheckRequest
   | AccessInfo
   | ActivateScan
+  | StartScan
+  | StartScanDone
+  | Ping
+  | Pong
   | AnalyzeSelection
   | AnalyzeTextRequest
-  | SetMenuVisible
   | CaptureRequest
   | CaptureResult
   | CaptureError

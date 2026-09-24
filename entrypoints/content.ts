@@ -5,21 +5,34 @@ let scanActive = false;
 let activePanel: ShadowRoot | null = null;
 let currentAnalysis: AnalysisResult | null = null;
 
+// Not declared in the manifest: the background injects this script into the
+// current tab (chrome.scripting, under activeTab) when the user clicks Scanner
+// in the popup or picks the context menu entry. Nothing of Sori runs on pages
+// the user never asked it to read, and the extension needs no access to "all
+// websites". Screenshot builds declare it on <all_urls>, as before, so the
+// site's shoot.mjs can still message it directly.
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  matches: __SORI_SCREENSHOTS__ ? ['<all_urls>'] : [],
+  registration: __SORI_SCREENSHOTS__ ? 'manifest' : 'runtime',
   main() {
+    // Injected again on every scan: listen once per page.
+    const g = globalThis as { __soriContent?: boolean };
+    if (g.__soriContent) return;
+    g.__soriContent = true;
+
     browser.runtime.onMessage.addListener((msg: unknown) => {
       const message = msg as ExtensionMessage;
-      if (message.type === 'ACTIVATE_SCAN' && !scanActive) {
+      if (message.type === 'PING') {
+        return Promise.resolve({ type: 'PONG' } satisfies ExtensionMessage);
+      } else if (message.type === 'ACTIVATE_SCAN' && !scanActive) {
         activateScan();
       } else if (message.type === 'ANALYZE_SELECTION') {
         runAnalyzeText(message.text);
       } else if (message.type === 'OCR_PROGRESS' && activePanel) {
         setPanelProgress(activePanel, message.status, message.progress);
       }
+      return undefined;
     });
-
-    watchSelectionForMenu();
   },
 });
 
@@ -83,33 +96,8 @@ function posLabel(pos: string): string {
   return POS_LABELS[pos] ?? pos;
 }
 
-// ---------------------------------------------------------------------------
-// Context-menu visibility — only offer "Analyze selection" for Korean text
-// ---------------------------------------------------------------------------
-
 // Hangul syllables + compatibility/conjoining Jamo.
 const HANGUL_RE = /[가-힣㄰-㆏ᄀ-ᇿ]/;
-
-function watchSelectionForMenu() {
-  let lastVisible: boolean | null = null;
-  let timer: number | undefined;
-
-  const sync = () => {
-    const sel = window.getSelection()?.toString() ?? '';
-    const visible = HANGUL_RE.test(sel);
-    if (visible === lastVisible) return; // only message background on change
-    lastVisible = visible;
-    browser.runtime
-      .sendMessage({ type: 'SET_MENU_VISIBLE', visible } satisfies ExtensionMessage)
-      .catch(() => {});
-  };
-
-  // selectionchange fires rapidly while drag-selecting — debounce it.
-  document.addEventListener('selectionchange', () => {
-    clearTimeout(timer);
-    timer = window.setTimeout(sync, 150);
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Capture overlay
@@ -268,6 +256,12 @@ async function runAnalyzeText(text: string) {
 
   const panel = createPanel();
   activePanel = panel;
+  // The menu entry shows for any selection (hiding it for non-Korean text
+  // took a content script on every page), so the check happens here.
+  if (!HANGUL_RE.test(clean)) {
+    setPanelError(panel, 'Cette sélection ne contient pas de coréen. Sélectionne une phrase en hangeul.');
+    return;
+  }
   setPanelStatus(panel, 'Analyse en cours…');
 
   const retry = () => runAnalyzeText(clean);
@@ -337,7 +331,7 @@ function createPanel(): ShadowRoot {
   document.body.appendChild(host);
 
   // Screenshot builds keep it open so Playwright can click inside the panel.
-  const shadow = host.attachShadow({ mode: __SORI_OPEN_SHADOW__ ? 'open' : 'closed' });
+  const shadow = host.attachShadow({ mode: __SORI_SCREENSHOTS__ ? 'open' : 'closed' });
   panelShadow = shadow;
   const styleEl = document.createElement('style');
   styleEl.textContent = STYLES;

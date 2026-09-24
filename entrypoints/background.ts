@@ -63,18 +63,19 @@ function report(status: string, progress: number) {
 const CONTEXT_MENU_ID = 'wkr-analyze-selection';
 
 export default defineBackground(() => {
-  // --- Right-click "Analyze selection" entry point -------------------------
-  // The item only shows when text is selected; clicking it forwards the
-  // selected text to the content script, which drives the same result panel
-  // as a scan (skipping capture/OCR).
-  // Created hidden — the content script reveals it (SET_MENU_VISIBLE) only when
-  // the current selection contains Hangul, since Chrome can't filter by content.
+  // --- Right-click "Analyser avec Sori" entry point ------------------------
+  // Shown for any selection: hiding it for non-Korean text took a content
+  // script on every page. Clicking it grants activeTab, which lets us inject
+  // the content script and hand it the text; the panel then runs the same
+  // pipeline as a scan, minus capture and OCR.
   chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-      id: CONTEXT_MENU_ID,
-      title: 'Analyser avec Sori',
-      contexts: ['selection'],
-      visible: false,
+    // removeAll first: an update would otherwise keep the old hidden entry.
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: CONTEXT_MENU_ID,
+        title: 'Analyser «\u00a0%s\u00a0» avec Sori',
+        contexts: ['selection'],
+      });
     });
   });
 
@@ -82,20 +83,28 @@ export default defineBackground(() => {
     if (info.menuItemId !== CONTEXT_MENU_ID || tab?.id == null) return;
     const text = (info.selectionText ?? '').trim();
     if (!text) return;
-    chrome.tabs
-      .sendMessage(tab.id, { type: 'ANALYZE_SELECTION', text } satisfies ExtensionMessage)
-      .catch(() => {
-        // Content script not injected (e.g. page loaded before the extension).
-      });
+    sendToTab(tab.id, { type: 'ANALYZE_SELECTION', text }).catch((e) =>
+      console.warn('[Sori] could not open the panel in this tab:', e),
+    );
   });
 
-  onMessage((msg: unknown): true | undefined => {
+  // --- Popup "Scanner": inject into the active tab, open the overlay --------
+  onMessage((msg: unknown, _sender, sendResponse): true | undefined => {
     const message = msg as ExtensionMessage;
-    if (message.type !== 'SET_MENU_VISIBLE') return undefined;
-    // browser.* rather than chrome.*: the polyfill's version returns a promise,
-    // which is what the .catch() below has always assumed.
-    browser.contextMenus.update(CONTEXT_MENU_ID, { visible: message.visible }).catch(() => {});
-    return undefined;
+    if (message.type !== 'START_SCAN') return undefined;
+    sendToTab(message.tabId, { type: 'ACTIVATE_SCAN' })
+      .then(() => sendResponse({ type: 'START_SCAN_DONE', ok: true } satisfies ExtensionMessage))
+      .catch((e) => {
+        console.warn('[Sori] could not start a scan in this tab:', e);
+        sendResponse({
+          type: 'START_SCAN_DONE',
+          ok: false,
+          message:
+            'Sori ne peut pas lire cette page. Chrome bloque les extensions sur ' +
+            'les pages chrome://, le Web Store et les PDF.',
+        } satisfies ExtensionMessage);
+      });
+    return true;
   });
 
   // --- Scan overlay opened: start the OCR engine while the user frames ---
@@ -408,6 +417,30 @@ export default defineBackground(() => {
     }
   );
 });
+
+// ---------------------------------------------------------------------------
+// Content script, injected on demand
+// ---------------------------------------------------------------------------
+
+/**
+ * Deliver a message to Sori's content script in a tab, injecting it first if
+ * the page doesn't have it yet. Works only while the extension holds
+ * activeTab for that tab (the popup was opened or the context menu used on
+ * it), which is exactly when the user asked for Sori.
+ */
+async function sendToTab(tabId: number, message: ExtensionMessage): Promise<void> {
+  const present = await chrome.tabs
+    .sendMessage(tabId, { type: 'PING' } satisfies ExtensionMessage)
+    .then((r) => (r as ExtensionMessage | undefined)?.type === 'PONG')
+    .catch(() => false);
+  if (!present) {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content-scripts/content.js'],
+    });
+  }
+  await chrome.tabs.sendMessage(tabId, message);
+}
 
 // ---------------------------------------------------------------------------
 // Anki queue persistence

@@ -60,10 +60,14 @@ See [Connecting your Sori account](#connecting-your-sori-account-required) below
 
 A scan flows through four stages:
 
-1. **Capture (content script + background).** When you drag a box, the content
-   script records the rectangle and asks the background service worker to take a
-   screenshot of the visible tab. The background crops to your selection and
-   lightly pre-processes the image (greyscale + contrast) to help OCR.
+1. **Capture (content script + background).** The content script is not
+   declared in the manifest: clicking Scanner in the popup (or the context menu
+   entry) grants `activeTab`, and the background injects it into that tab only.
+   When you drag a box, it records the rectangle and asks the background to
+   screenshot the visible tab. The background crops to your selection and cleans
+   it up for OCR in one canvas pass (`src/ocrPrep.ts`: Otsu threshold, light
+   text inverted, bubble outline and panel edges touching the frame erased,
+   white margin).
 
 2. **OCR (offscreen document).** The cropped image is handed to an *offscreen
    document* running Tesseract.js with the Korean model. This indirection is
