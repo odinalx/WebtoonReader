@@ -113,11 +113,11 @@ function activateScan() {
     pointerEvents: 'none', zIndex: '2147483647',
     whiteSpace: 'nowrap',
   });
-  hint.textContent = 'Drag to select a speech bubble — ESC to cancel';
+  hint.textContent = 'Drag to select a speech bubble · Esc to cancel';
 
   const selBox = el('div', {
     position: 'fixed', display: 'none',
-    border: '1.5px solid #00b552', background: 'rgba(0, 181, 82, 0.10)',
+    border: '1.5px solid #2f4bd8', background: 'rgba(47, 75, 216, 0.10)',
     zIndex: '2147483646', pointerEvents: 'none', boxSizing: 'border-box',
   });
 
@@ -686,16 +686,16 @@ const STYLES = `
     /* Sori's palette, same values as the popup and the site. This panel is
        injected over someone else's page, so it is the surface most people see
        — and it was the one still wearing the old green. */
-    --wkr-green: #00b552;
-    --wkr-green-strong: #00893e;
-    --wkr-green-soft: rgba(0, 181, 82, 0.12);
+    --wkr-accent: #2f4bd8;
+    --wkr-accent-strong: #2438a8;
+    --wkr-accent-soft: #e4e8fb;
     --wkr-bg: #ffffff;
     --wkr-surface: #f4f1e9;
     --wkr-text: #16141a;
     --wkr-muted: #6a6675;
-    --wkr-border: rgba(20, 18, 26, 0.16);
+    --wkr-border: rgba(20, 18, 26, 0.14);
     --wkr-ink: #16141a;
-    --wkr-error: #d4495f;
+    --wkr-error: #c8412f;
   }
   .panel {
     background: var(--wkr-bg);
@@ -716,7 +716,7 @@ const STYLES = `
   }
   .title {
     display: flex; align-items: center; gap: 7px;
-    font-size: 13px; font-weight: 700; color: var(--wkr-green-strong); letter-spacing: 0.3px;
+    font-size: 13px; font-weight: 700; color: var(--wkr-accent-strong); letter-spacing: 0.3px;
   }
   .close {
     display: flex; background: none; border: none; color: var(--wkr-muted); cursor: pointer;
@@ -735,7 +735,7 @@ const STYLES = `
     line-height: 1.5; word-break: break-word;
   }
   .progress { width: 100%; height: 6px; background: var(--wkr-surface); border-radius: 3px; overflow: hidden; }
-  .progress-bar { height: 100%; background: var(--wkr-green); border-radius: 3px; transition: width 0.2s ease; }
+  .progress-bar { height: 100%; background: var(--wkr-accent); border-radius: 3px; transition: width 0.2s ease; }
   .progress-pct { font-size: 11px; color: var(--wkr-muted); text-align: center; }
 
   .phrase-row {
@@ -753,7 +753,7 @@ const STYLES = `
     background: var(--wkr-bg); border: 1px solid var(--wkr-border);
     color: var(--wkr-muted); cursor: pointer; padding: 6px; border-radius: 8px;
   }
-  .speak-all:hover { color: var(--wkr-green-strong); border-color: var(--wkr-green); }
+  .speak-all:hover { color: var(--wkr-accent-strong); border-color: var(--wkr-accent); }
   .w {
     cursor: pointer; padding: 2px 3px 7px; border-radius: 5px;
     background-image: radial-gradient(circle, var(--c, var(--wkr-muted)) 1.6px, transparent 1.9px);
@@ -762,12 +762,12 @@ const STYLES = `
     background-position: left bottom 1px;
     transition: background-color 0.12s ease;
   }
-  .w:hover { background-color: var(--c-soft, var(--wkr-green-soft)); }
-  .w.active { background-color: var(--c-soft, var(--wkr-green-soft)); }
+  .w:hover { background-color: var(--c-soft, var(--wkr-accent-soft)); }
+  .w.active { background-color: var(--c-soft, var(--wkr-accent-soft)); }
 
   .translation {
     font-size: 15px; line-height: 1.5; color: var(--wkr-text); font-weight: 500;
-    padding: 10px; background: var(--wkr-green-soft); border-radius: 8px;
+    padding: 10px; background: var(--wkr-accent-soft); border-radius: 8px;
   }
   .translation.hidden { display: none; }
   .tone { font-size: 11px; color: var(--wkr-muted); margin-top: 6px; font-weight: 400; }
@@ -778,13 +778,13 @@ const STYLES = `
     border-radius: 8px; font-family: inherit;
   }
   .btn-primary {
-    background: var(--wkr-green); border: 1px solid var(--wkr-green); color: #fff;
+    background: var(--wkr-accent); border: 1px solid var(--wkr-accent); color: #fff;
   }
-  .btn-primary:hover { background: var(--wkr-green-strong); border-color: var(--wkr-green-strong); }
+  .btn-primary:hover { background: var(--wkr-accent-strong); border-color: var(--wkr-accent-strong); }
   .btn-row {
     background: none; border: 1px solid var(--wkr-border); color: var(--wkr-muted); font-weight: 500;
   }
-  .btn-row:hover { color: var(--wkr-green-strong); border-color: var(--wkr-green); }
+  .btn-row:hover { color: var(--wkr-accent-strong); border-color: var(--wkr-accent); }
 
   .legend { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
   .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--wkr-muted); }
@@ -797,7 +797,7 @@ const STYLES = `
   }
   .anki-count { font-size: 11px; color: var(--wkr-muted); }
   .anki-count.muted { color: var(--wkr-muted); }
-  .anki-count.ok { color: var(--wkr-green-strong); }
+  .anki-count.ok { color: var(--wkr-accent-strong); }
   .anki-count.warn { color: #c2410c; line-height: 1.4; }
   .anki-actions { display: flex; align-items: center; gap: 6px; }
   .anki-bar .anki-send { width: auto; padding: 5px 10px; font-size: 12px; }
@@ -816,7 +816,7 @@ const STYLES = `
   }
   .pop-flash:hover:not(:disabled) { background: #000; }
   .pop-flash:disabled { cursor: default; opacity: 0.9; }
-  .pop-flash.done { background: var(--wkr-green); border-color: var(--wkr-green); color: #fff; }
+  .pop-flash.done { background: var(--wkr-accent); border-color: var(--wkr-accent); color: #fff; }
   .pop-flash.warn { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
 
   .popover {
@@ -842,7 +842,7 @@ const STYLES = `
     display: flex; background: none; border: none; cursor: pointer;
     color: var(--wkr-muted); padding: 3px; border-radius: 6px;
   }
-  .pop-tts:hover { background: var(--wkr-surface); color: var(--wkr-green-strong); }
+  .pop-tts:hover { background: var(--wkr-surface); color: var(--wkr-accent-strong); }
   .pop-rom-text {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 14px; color: var(--wkr-muted); letter-spacing: 0.2px;
@@ -865,5 +865,5 @@ const STYLES = `
     color: var(--wkr-muted); text-decoration: none; font-size: 12px;
     padding-top: 8px; border-top: 1px solid var(--wkr-border);
   }
-  .pop-naver:hover { color: var(--wkr-green-strong); text-decoration: underline; }
+  .pop-naver:hover { color: var(--wkr-accent-strong); text-decoration: underline; }
 `;

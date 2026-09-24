@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- The site's favicon, on the site's accent rather than the favicon's
-       lighter green: the extension sits in a browser toolbar next to the
-       site's own tab, and two greens a shade apart read as a mistake. -->
-  <rect width="64" height="64" rx="14" fill="#14121a"/>
+  <!-- The site's favicon, exactly: the extension sits in the toolbar next to
+       the site's own tab, and the two should read as one product. -->
+  <rect width="64" height="64" rx="14" fill="#2f4bd8"/>
   <text x="32" y="46" text-anchor="middle"
         font-family="'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
-        font-size="38" font-weight="700" fill="#00b552">소</text>
+        font-size="38" font-weight="700" fill="#f4f1e9">소</text>
 </svg>
