@@ -6,6 +6,11 @@ import type { ExtensionMessage } from '../../src/types';
 
 let workerPromise: Promise<TesseractWorker> | null = null;
 
+// Scans waiting on the engine. Loading progress is only relayed while one is,
+// so a warm-up started when the overlay opens doesn't overwrite the results
+// of the previous scan still shown in the panel.
+let pendingScans = 0;
+
 // Restrict the recognizer to Hangul syllables + the punctuation/digits we
 // actually keep, so it can't hallucinate stray Latin letters or symbols out of
 // bubble artwork. Standalone compatibility jamo (ㄱ–ㅎ, ㅏ–ㅣ) are deliberately
@@ -101,7 +106,7 @@ function getWorker(): Promise<TesseractWorker> {
     // Local language data (bundled) — no network round-trip on first scan.
     langPath: chrome.runtime.getURL('tesseract').replace(/\/$/, ''),
     logger: (m) => {
-      if (m && typeof m.progress === 'number') {
+      if (pendingScans > 0 && m && typeof m.progress === 'number') {
         reportProgress(STATUS_FR[m.status] ?? 'lecture du texte', m.progress);
       }
     },
@@ -131,6 +136,7 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse): bool
 
   if (message.type === 'OCR_REQUEST' && message.target === 'offscreen') {
     (async () => {
+      pendingScans++;
       try {
         const worker = await getWorker();
         reportProgress('lecture du texte', 0);
@@ -138,9 +144,17 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse): bool
         sendResponse({ type: 'OCR_RESULT', text: confidentText(data) } satisfies ExtensionMessage);
       } catch (e) {
         sendResponse({ type: 'OCR_ERROR', message: describe(e) } satisfies ExtensionMessage);
+      } finally {
+        pendingScans--;
       }
     })();
     return true; // async sendResponse
+  }
+
+  if (message.type === 'OCR_WARM' && message.target === 'offscreen') {
+    // A failure resets workerPromise; the scan itself will retry and report it.
+    getWorker().catch((e) => console.warn('[Sori] OCR warm-up failed:', e));
+    return false;
   }
 
   if (message.type === 'TTS_PLAY' && message.target === 'offscreen') {

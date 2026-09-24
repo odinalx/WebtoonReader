@@ -98,6 +98,17 @@ export default defineBackground(() => {
     return undefined;
   });
 
+  // --- Scan overlay opened: start the OCR engine while the user frames ---
+  onMessage((msg: unknown): true | undefined => {
+    const message = msg as ExtensionMessage;
+    if (message.type !== 'OCR_WARM' || message.target) return undefined;
+    (async () => {
+      await ensureOffscreen();
+      await chrome.runtime.sendMessage({ type: 'OCR_WARM', target: 'offscreen' } satisfies ExtensionMessage);
+    })().catch((e) => console.warn('[Sori] OCR warm-up failed:', e));
+    return undefined;
+  });
+
   // --- Paywall status for the popup / options page --------------------------
   onMessage(
     (msg: unknown, _sender, sendResponse): true | undefined => {

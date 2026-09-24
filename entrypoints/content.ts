@@ -117,6 +117,10 @@ function watchSelectionForMenu() {
 
 function activateScan() {
   scanActive = true;
+  // Load the OCR engine while the user frames the bubble: the first scan
+  // otherwise waits for the wasm core and the 11 MB Korean model after the
+  // capture.
+  browser.runtime.sendMessage({ type: 'OCR_WARM' } satisfies ExtensionMessage).catch(() => {});
 
   const overlay = el('div', {
     position: 'fixed', top: '0', left: '0',

@@ -132,6 +132,14 @@ export interface OcrError {
   message: string;
 }
 
+// content -> background -> offscreen: the scan overlay opened, so start the
+// OCR engine now (worker, wasm core, Korean model) while the user frames a
+// bubble, instead of after the capture.
+export interface OcrWarm {
+  type: 'OCR_WARM';
+  target?: 'offscreen';
+}
+
 // offscreen -> all contexts (progress while OCR runs)
 export interface OcrProgress {
   type: 'OCR_PROGRESS';
@@ -237,6 +245,7 @@ export type ExtensionMessage =
   | OcrResult
   | OcrError
   | OcrProgress
+  | OcrWarm
   | TtsRequest
   | TtsDone
   | TtsPlay
