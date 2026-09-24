@@ -41,13 +41,13 @@ export default defineConfig({
     },
   }),
   manifest: {
-    name: 'Sori',
-    description: "Lis tes webtoons en coréen\u00a0: capture une bulle, comprends chaque mot, garde-les dans ton deck Sori.",
+    name: 'Dokhae',
+    description: "Lis tes webtoons en coréen\u00a0: capture une bulle, comprends chaque mot, garde-les dans ton deck Dokhae.",
     version: '0.1.1',
     // Tesseract compiles a .wasm core; MV3's default CSP (script-src 'self')
     // blocks WebAssembly.instantiate. 'wasm-unsafe-eval' re-allows it.
     // (The sandbox entry that used to sit here existed only for Kiwi, whose
-    // Emscripten glue needs 'unsafe-eval'. Segmentation now runs on the Sori
+    // Emscripten glue needs 'unsafe-eval'. Segmentation now runs on the Dokhae
     // server, so neither the sandbox nor that CSP relaxation is needed.)
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
@@ -56,14 +56,14 @@ export default defineConfig({
     // "browsing history" warning at install.
     permissions: ['activeTab', 'scripting', 'storage', 'offscreen', 'contextMenus'],
     host_permissions: [
-      // Google TTS fallback only — translation itself moved to the Sori server.
+      // Google TTS fallback only — translation itself moved to the Dokhae server.
       'https://translate.google.com/*',
       'https://*.apigw.ntruss.com/*',
       'https://ko.dict.naver.com/*',
       'https://dict-dn.pstatic.net/*',
       'http://127.0.0.1:8765/*',
       'http://localhost:8765/*',
-      // Sori website API (account check + saving flashcards).
+      // Dokhae website API (account check + saving flashcards).
       `${siteOrigin()}/*`,
       // Screenshot builds only (the site's scripts/screenshots/shoot.mjs):
       // automation can't click the toolbar button, so it never gets
@@ -73,6 +73,6 @@ export default defineConfig({
     ],
     // No web_accessible_resources: the Tesseract worker, core and model are
     // loaded by the offscreen document, which is already on the extension
-    // origin. Exposing them to every page only let sites fingerprint Sori.
+    // origin. Exposing them to every page only let sites fingerprint Dokhae.
   },
 });

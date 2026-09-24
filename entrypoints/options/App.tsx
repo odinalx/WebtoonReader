@@ -59,17 +59,17 @@ export function App() {
   return (
     <div className="page">
       <header className="page-head">
-        <span className="eyebrow">Sori · 소리</span>
+        <span className="eyebrow">Dokhae · 독해</span>
         <h1>Réglages</h1>
         <p className="lead">
-          Connecte ton compte Sori ci-dessous. Les mots que tu captures vont
-          dans ton deck Sori (ou dans Anki, si tu préfères).
+          Connecte ton compte Dokhae ci-dessous. Les mots que tu captures vont
+          dans ton deck Dokhae (ou dans Anki, si tu préfères).
         </p>
       </header>
 
       <section>
         <div className="sec-head">
-          <h2>Compte Sori</h2>
+          <h2>Compte Dokhae</h2>
           <AccessBadge access={access} checking={checking} />
         </div>
         <ol className="steps hint">
@@ -101,7 +101,7 @@ export function App() {
           <p className="hint warn-hint">
             {access.reason === 'no-token' && 'Aucun jeton pour l’instant. Crée un compte gratuit sur le site et colle ton jeton ici.'}
             {access.reason === 'invalid-token' && 'Ce jeton a été refusé. Crées-en un nouveau sur ta page compte.'}
-            {access.reason === 'offline' && 'Impossible de joindre le site Sori pour vérifier. Vérifie ta connexion.'}
+            {access.reason === 'offline' && 'Impossible de joindre le site Dokhae pour vérifier. Vérifie ta connexion.'}
           </p>
         )}
       </section>
@@ -119,7 +119,7 @@ export function App() {
             onChange={() => update({ flashcardTarget: 'site' })}
           />
           <span>
-            <strong>Site Sori</strong> (par défaut)<br />
+            <strong>Site Dokhae</strong> (par défaut)<br />
             Les cartes arrivent dans ton deck en ligne. Révise-les partout sur{' '}
             <a href={`${SITE_URL}/study`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}/study</a>.
           </span>
@@ -179,7 +179,7 @@ export function App() {
             <span className="field-label">Nom du deck</span>
             <input
               type="text"
-              placeholder="Sori"
+              placeholder="Dokhae"
               value={settings.ankiDeck}
               onChange={(e) => update({ ankiDeck: e.target.value })}
             />
@@ -270,7 +270,7 @@ function AccessBadge({ access, checking }: { access: AccessView | null; checking
 }
 
 /**
- * Which Sori deck captured words land in.
+ * Which Dokhae deck captured words land in.
  *
  * The decks are the site's, so they're fetched rather than typed: a name typed
  * here would create nothing and file words nowhere. The list reloads whenever

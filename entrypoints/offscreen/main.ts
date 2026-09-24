@@ -104,13 +104,13 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse): bool
 
   if (message.type === 'OCR_WARM' && message.target === 'offscreen') {
     // A failure resets workerPromise; the scan itself will retry and report it.
-    getWorker().catch((e) => console.warn('[Sori] OCR warm-up failed:', e));
+    getWorker().catch((e) => console.warn('[Dokhae] OCR warm-up failed:', e));
     return false;
   }
 
   if (message.type === 'TTS_PLAY' && message.target === 'offscreen') {
     const audio = new Audio(message.audioDataUrl);
-    audio.play().catch((e) => console.error('[Sori] audio play failed:', e));
+    audio.play().catch((e) => console.error('[Dokhae] audio play failed:', e));
     return false;
   }
 

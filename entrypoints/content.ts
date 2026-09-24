@@ -8,7 +8,7 @@ let currentAnalysis: AnalysisResult | null = null;
 
 // Not declared in the manifest: the background injects this script into the
 // current tab (chrome.scripting, under activeTab) when the user clicks Scanner
-// in the popup or picks the context menu entry. Nothing of Sori runs on pages
+// in the popup or picks the context menu entry. Nothing of Dokhae runs on pages
 // the user never asked it to read, and the extension needs no access to "all
 // websites". Screenshot builds declare it on <all_urls>, as before, so the
 // site's shoot.mjs can still message it directly.
@@ -341,10 +341,10 @@ function createPanel(): ShadowRoot {
   const panel = document.createElement('div');
   panel.className = 'panel';
   panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-label', 'Sori');
+  panel.setAttribute('aria-label', 'Dokhae');
   panel.innerHTML = `
     <div class="header">
-      <span class="title"><svg class="title-mark" viewBox="0 0 64 64" width="18" height="18" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2f4bd8"/><path fill="#f4f1e9" d="M32.03 50Q28.62 50 25.93 49.35Q23.24 48.69 21.33 47.36Q19.42 46.02 18.34 44.01Q17.27 41.99 17.11 39.38L23.71 37.23Q23.81 39.59 24.88 41.16Q25.96 42.73 27.94 43.46Q29.93 44.19 32.39 44.19Q34.75 44.19 36.37 43.62Q37.99 43.04 38.83 42.07Q39.67 41.1 39.67 39.95Q39.67 38.59 38.62 37.76Q37.57 36.92 35.77 36.34Q33.96 35.77 31.66 35.24Q29.1 34.67 26.61 33.94Q24.12 33.2 22.11 32.05Q20.1 30.9 18.92 29.07Q17.74 27.24 17.74 24.47Q17.74 21.27 19.34 18.94Q20.93 16.62 24.02 15.31Q27.11 14 31.45 14Q35.85 14 38.96 15.28Q42.07 16.56 43.8 18.89Q45.53 21.22 45.68 24.41L38.88 26.3Q38.88 24.67 38.36 23.47Q37.83 22.27 36.89 21.46Q35.95 20.65 34.56 20.23Q33.18 19.81 31.4 19.81Q29.36 19.81 27.87 20.33Q26.38 20.85 25.62 21.74Q24.86 22.63 24.86 23.84Q24.86 25.25 26.03 26.17Q27.21 27.08 29.17 27.66Q31.14 28.23 33.49 28.76Q35.74 29.23 38.07 29.93Q40.4 30.64 42.41 31.76Q44.43 32.89 45.66 34.8Q46.89 36.71 46.89 39.59Q46.89 42.73 45.21 45.08Q43.54 47.44 40.22 48.72Q36.89 50 32.03 50Z"/></svg><span>Sori</span></span>
+      <span class="title"><svg class="title-mark" viewBox="0 0 64 64" width="18" height="18" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2f4bd8"/><path fill="#f4f1e9" d="M20.67 49V42.97H30.56Q33.44 42.97 35.35 41.71Q37.25 40.45 38.23 38.03Q39.21 35.61 39.21 32.1Q39.21 29.22 38.59 27.13Q37.98 25.05 36.77 23.71Q35.55 22.37 33.73 21.7Q31.9 21.03 29.42 21.03H20.67V15H29.17Q35.35 15 39.26 17.01Q43.18 19.02 45.03 22.75Q46.89 26.49 46.89 31.69Q46.89 35.61 45.96 38.49Q45.03 41.38 43.46 43.38Q41.89 45.39 39.83 46.63Q37.77 47.87 35.45 48.43Q33.13 49 30.76 49ZM17.11 49V15H24.53V49Z"/></svg><span>Dokhae</span></span>
       <button class="close icon-btn" title="Fermer (Échap)" aria-label="Fermer">${ICON.close}</button>
     </div>
     <div class="body" aria-live="polite"><div class="status">Capture en cours…</div></div>
@@ -487,9 +487,9 @@ function renderResults(shadow: ShadowRoot, analysis: AnalysisResult) {
 // Flashcard queue UI (footer bar of the result panel)
 // ---------------------------------------------------------------------------
 
-// Human name of the current destination ('site' → Sori, 'anki' → Anki).
+// Human name of the current destination ('site' → Dokhae, 'anki' → Anki).
 function targetName(target: string | undefined): string {
-  return target === 'anki' ? 'Anki' : 'Sori';
+  return target === 'anki' ? 'Anki' : 'Dokhae';
 }
 
 function cards(n: number, suffix = ''): string {
@@ -559,7 +559,7 @@ async function sendAllCards(shadow: ShadowRoot) {
     // Cards the site rejected as invalid left the queue: say so, or the
     // count would silently shrink.
     const dropped = resp.dropped
-      ? ` · ${cards(resp.dropped, 'refusée')} par Sori et retirée${resp.dropped > 1 ? 's' : ''} de la file`
+      ? ` · ${cards(resp.dropped, 'refusée')} par Dokhae et retirée${resp.dropped > 1 ? 's' : ''} de la file`
       : '';
     const failedLeft = resp.failed - (resp.dropped ?? 0);
     const failed = failedLeft > 0 ? `, ${failedLeft} en échec` : '';
@@ -570,7 +570,7 @@ async function sendAllCards(shadow: ShadowRoot) {
       resp.message ||
       (resp.target === 'anki'
         ? 'Impossible de joindre Anki. Ouvre-le avec le module AnkiConnect.'
-        : 'Impossible de joindre Sori. Vérifie ta connexion et ton jeton d’accès.');
+        : 'Impossible de joindre Dokhae. Vérifie ta connexion et ton jeton d’accès.');
     bar.innerHTML = `<span class="anki-count warn">${esc(why)}</span>`;
     setTimeout(() => void updateAnkiBar(shadow), 4000);
   }
@@ -801,7 +801,7 @@ function makeDraggable(host: HTMLElement, handle: HTMLElement) {
 
 const STYLES = `
   :host {
-    /* Sori's palette, same values as the popup and the site. This panel is
+    /* Dokhae's palette, same values as the popup and the site. This panel is
        injected over someone else's page, so it is the surface most people
        see. Everything is reset inside the shadow root so the host page's
        styles cannot leak in. */

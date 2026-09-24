@@ -6,16 +6,16 @@ export interface SelectionRect {
   devicePixelRatio: number;
 }
 
-// Where "Add to flashcards" sends cards: the Sori website deck (default) or
+// Where "Add to flashcards" sends cards: the Dokhae website deck (default) or
 // desktop Anki via AnkiConnect.
 export type FlashcardTarget = 'site' | 'anki';
 
-// Sori account + Naver Cloud credentials (Clova Voice) + Anki.
+// Dokhae account + Naver Cloud credentials (Clova Voice) + Anki.
 export interface Settings {
-  // Sori website (subscription + built-in flashcards).
+  // Dokhae website (subscription + built-in flashcards).
   siteToken: string;      // personal API token ("sori_…") created on /account
   flashcardTarget: FlashcardTarget;
-  // Which Sori deck captured words land in. '' means "the account's first
+  // Which Dokhae deck captured words land in. '' means "the account's first
   // deck" — the server's own fallback, so a fresh install needs no setup and a
   // deck deleted on the site doesn't strand the extension.
   soriDeckId: string;
@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceApiKey: '',
   voiceSpeaker: 'nara',
   ankiConnectUrl: 'http://127.0.0.1:8765',
-  ankiDeck: 'Sori',
+  ankiDeck: 'Dokhae',
   ankiAutoSend: false,
 };
 
@@ -107,7 +107,7 @@ export interface StartScanDone {
   message?: string;
 }
 
-// background -> content script: is Sori already injected in this tab?
+// background -> content script: is Dokhae already injected in this tab?
 export interface Ping {
   type: 'PING';
 }
@@ -180,7 +180,7 @@ export interface TtsPlay {
 }
 
 // popup/options -> background: is the extension unlocked (valid token on the
-// Sori website), and on which plan? `force` bypasses the cached check.
+// Dokhae website), and on which plan? `force` bypasses the cached check.
 export interface AccessCheckRequest {
   type: 'ACCESS_CHECK';
   force?: boolean;

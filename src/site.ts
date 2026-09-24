@@ -2,7 +2,7 @@ import { SITE_URL } from './config';
 import { romanize } from './romanize';
 import type { AnalysisResult, AnkiCardDraft } from './types';
 
-// Client for the Sori website's extension API (see the site's src/routes/api).
+// Client for the Dokhae website's extension API (see the site's src/routes/api).
 // Auth is a personal bearer token ("sori_…") the user creates on /account.
 
 export interface SiteAccount {
@@ -25,7 +25,7 @@ export class SiteApiError extends Error {
 }
 
 const FRENCH_ERRORS: Record<string, string> = {
-  subscription_required: `Scanner fait partie de l'abonnement Sori. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`,
+  subscription_required: `Scanner fait partie de l'abonnement Dokhae. Pour un nouveau compte, le premier mois est à 2,99\u00a0€\u00a0: ${SITE_URL}/pricing`,
   rate_limited: 'Trop de scans d\'un coup. Réessaie dans un moment.',
   http_401: `Ton jeton d'accès a été refusé. Crées-en un nouveau sur ${SITE_URL}/account.`,
 };
@@ -54,7 +54,7 @@ async function request(token: string, path: string, init?: RequestInit): Promise
       french ? french
       : typeof body.message === 'string' ? body.message
       : typeof body.error === 'string' ? body.error
-      : `Erreur du site Sori (HTTP ${res.status})`;
+      : `Erreur du site Dokhae (HTTP ${res.status})`;
     throw new SiteApiError(message, res.status, code);
   }
   return body;
@@ -135,12 +135,12 @@ function toWordInput(card: AnkiCardDraft) {
     translation,
     example: card.sentence,
     exampleTranslation: card.sentenceTranslation,
-    source: card.source || 'Sori Extension',
+    source: card.source || 'Dokhae Extension',
   };
 }
 
 /**
- * POST /api/cards — save one captured word into the user's Sori deck.
+ * POST /api/cards — save one captured word into the user's Dokhae deck.
  *
  * An empty `deckId` is left out of the body entirely: the site then files the
  * word in the account's first deck, which is what a user who never opened the
@@ -170,7 +170,7 @@ export function isRejectedCard(e: unknown): boolean {
   return e instanceof SiteApiError && e.status === 422;
 }
 
-export const REJECTED_CARD_NOTICE = 'refusée par Sori (mot ou traduction invalide), retirée de la file';
+export const REJECTED_CARD_NOTICE = 'refusée par Dokhae (mot ou traduction invalide), retirée de la file';
 
 /** Send a batch of queued cards to the site; mirrors sendCardsToAnki's shape. */
 export async function sendCardsToSite(
