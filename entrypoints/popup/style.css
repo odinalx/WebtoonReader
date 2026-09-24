@@ -95,6 +95,24 @@ body {
 }
 .paywall-actions { display: flex; flex-direction: column; gap: 6px; }
 
+.free-meter {
+  width: 100%;
+  font-size: 12px;
+  color: var(--wkr-muted);
+  text-align: center;
+}
+.free-upgrade {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: #00b552;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .error {
   width: 100%;
   font-size: 12px;

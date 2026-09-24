@@ -8,6 +8,8 @@ interface AccessView {
   reason?: string;
   email?: string;
   plan?: string;
+  subscribed?: boolean;
+  freeScansLeft?: number;
   siteUrl: string;
 }
 
@@ -23,11 +25,14 @@ export function App() {
       try {
         const resp = (await browser.runtime.sendMessage({
           type: 'ACCESS_CHECK',
+          // Fresh every time the popup opens: it shows today's free scans left.
+          force: true,
         } satisfies ExtensionMessage)) as ExtensionMessage | undefined;
         if (resp && resp.type === 'ACCESS_INFO') {
           setAccess({
             ok: resp.ok, reason: resp.reason, email: resp.email,
-            plan: resp.plan, siteUrl: resp.siteUrl,
+            plan: resp.plan, subscribed: resp.subscribed,
+            freeScansLeft: resp.freeScansLeft, siteUrl: resp.siteUrl,
           });
         }
       } catch {
@@ -83,14 +88,12 @@ export function App() {
 
       {access && !access.ok ? (
         <div className="paywall">
-          <div className="paywall-title">🔒 Subscription required</div>
+          <div className="paywall-title">🔒 Sign in to start</div>
           <p className="paywall-text">
             {access.reason === 'no-token' &&
-              'Sori now needs an account. Subscribe on the website, then paste your access token in the settings.'}
+              'Create a free account on the website (10 scans a day), then paste your access token in the settings.'}
             {access.reason === 'invalid-token' &&
               'Your access token was rejected. Create a new one on your Sori account page.'}
-            {access.reason === 'not-subscribed' &&
-              `${access.email ? access.email + ' has' : 'Your account has'} no active plan. Subscribe to unlock the extension.`}
             {access.reason === 'offline' &&
               'Could not reach the Sori site to verify your subscription. Check your connection.'}
           </p>
@@ -98,9 +101,7 @@ export function App() {
             <button
               className="scan-btn"
               onClick={() => browser.tabs.create({
-                url: access.reason === 'invalid-token'
-                  ? `${access.siteUrl}/account`
-                  : `${access.siteUrl}/pricing`,
+                url: `${access.siteUrl}/account`,
               })}
             >
               Open Sori website
@@ -128,6 +129,18 @@ export function App() {
           </>
         )}
       </button>
+      )}
+
+      {access?.ok && access.subscribed === false && (
+        <div className="free-meter">
+          {access.freeScansLeft ?? 0} free scan{access.freeScansLeft === 1 ? '' : 's'} left today ·{' '}
+          <button
+            className="free-upgrade"
+            onClick={() => browser.tabs.create({ url: `${access.siteUrl}/pricing` })}
+          >
+            Go unlimited
+          </button>
+        </div>
       )}
 
       {status === 'error' && <div className="error">{error}</div>}

@@ -10,7 +10,7 @@ import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
 import { analyzeOnSite, sendCardToSite, sendCardsToSite } from '../src/site';
-import { getAccess, lockMessage } from '../src/access';
+import { deckLock, getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
 import type { Settings } from '../src/types';
 
@@ -104,6 +104,8 @@ export default defineBackground(() => {
           reason: state.reason,
           email: state.email,
           plan: state.plan,
+          subscribed: state.subscribed,
+          freeScansLeft: state.freeScansLeft,
           siteUrl: SITE_URL,
         } satisfies ExtensionMessage);
       })();
@@ -119,7 +121,7 @@ export default defineBackground(() => {
 
       (async () => {
         try {
-          // Paywall: scanning requires an active Sori subscription.
+          // Scanning needs a valid token; the site meters free accounts.
           const access = await getAccess();
           if (!access.ok) throw new Error(lockMessage(access));
 
@@ -185,7 +187,7 @@ export default defineBackground(() => {
 
       (async () => {
         try {
-          // Paywall: text analysis requires an active Sori subscription too.
+          // Same access rule as a scan.
           const access = await getAccess();
           if (!access.ok) throw new Error(lockMessage(access));
 
@@ -278,8 +280,8 @@ export default defineBackground(() => {
             // On failure the card stays in the queue so it's never lost.
             if (target === 'site') {
               try {
-                const access = await getAccess();
-                if (!access.ok) throw new Error(lockMessage(access));
+                const locked = deckLock(await getAccess());
+                if (locked) throw new Error(lockMessage(locked));
                 await sendCardToSite(settings.siteToken.trim(), card, settings.soriDeckId);
                 sendResponse({
                   type: 'ANKI_ADD_DONE', ok: true, queued: (await getQueue()).length,
@@ -337,8 +339,8 @@ export default defineBackground(() => {
             return;
           }
           if (target === 'site') {
-            const access = await getAccess();
-            if (!access.ok) throw new Error(lockMessage(access));
+            const locked = deckLock(await getAccess());
+            if (locked) throw new Error(lockMessage(locked));
           }
           const result =
             target === 'site'

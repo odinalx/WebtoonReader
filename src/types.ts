@@ -157,8 +157,8 @@ export interface TtsPlay {
   audioDataUrl: string;
 }
 
-// popup/options -> background: is the extension unlocked (valid token + active
-// subscription on the Sori website)? `force` bypasses the cached check.
+// popup/options -> background: is the extension unlocked (valid token on the
+// Sori website), and on which plan? `force` bypasses the cached check.
 export interface AccessCheckRequest {
   type: 'ACCESS_CHECK';
   force?: boolean;
@@ -169,6 +169,8 @@ export interface AccessInfo {
   reason?: 'no-token' | 'invalid-token' | 'not-subscribed' | 'offline';
   email?: string;
   plan?: string;
+  subscribed?: boolean;
+  freeScansLeft?: number;
   siteUrl: string; // site origin, for "open the website" links
 }
 
