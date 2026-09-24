@@ -12,6 +12,7 @@ import { sendCardsToAnki } from '../src/anki';
 import { analyzeOnSite, sendCardToSite, sendCardsToSite } from '../src/site';
 import { deckLock, getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
+import { prepareForOcr } from '../src/ocrPrep';
 import type { Settings } from '../src/types';
 
 const OFFSCREEN_URL = 'offscreen.html';
@@ -145,11 +146,9 @@ export default defineBackground(() => {
 
           // --- Crop + preprocess ---
           report('recadrage', 0.25);
-          let cropped: string;
           let preprocessed: string;
           try {
-            cropped = await cropImage(dataUrl, message.rect);
-            preprocessed = await preprocess(cropped);
+            preprocessed = await prepareCapture(dataUrl, message.rect);
           } catch (e) {
             throw new Error(`Impossible de traiter l'image capturée\u00a0: ${describe(e)}`);
           }
@@ -571,46 +570,32 @@ function describe(e: unknown): string {
 // Image processing
 // ---------------------------------------------------------------------------
 
-async function cropImage(dataUrl: string, rect: SelectionRect): Promise<string> {
+/**
+ * Crop the selection out of the screenshot and ready it for Tesseract in one
+ * canvas pass: crop, upscale x2 when small (Tesseract wants glyphs around
+ * 30px tall), then the border cleanup of src/ocrPrep.ts. Encoded once.
+ */
+async function prepareCapture(dataUrl: string, rect: SelectionRect): Promise<string> {
   const dpr = rect.devicePixelRatio;
   const x = Math.round(rect.x * dpr);
   const y = Math.round(rect.y * dpr);
   const w = Math.max(1, Math.round(rect.width * dpr));
   const h = Math.max(1, Math.round(rect.height * dpr));
+  const scale = w < 400 ? 2 : 1;
 
-  const bitmap = await dataUrlToBitmap(dataUrl);
-  const canvas = new OffscreenCanvas(w, h);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, x, y, w, h, 0, 0, w, h);
+  const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+  const canvas = new OffscreenCanvas(w * scale, h * scale);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, x, y, w, h, 0, 0, w * scale, h * scale);
+  bitmap.close();
+
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const clean = prepareForOcr(pixels.data, canvas.width, canvas.height);
+  canvas.width = clean.width;
+  canvas.height = clean.height;
+  ctx.putImageData(new ImageData(clean.data, clean.width, clean.height), 0, 0);
   return blobToDataUrl(await canvas.convertToBlob({ type: 'image/png' }));
-}
-
-async function preprocess(dataUrl: string): Promise<string> {
-  const bitmap = await dataUrlToBitmap(dataUrl);
-  const scale = bitmap.width < 400 ? 2 : 1;
-  const w = bitmap.width * scale;
-  const h = bitmap.height * scale;
-  const canvas = new OffscreenCanvas(w, h);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-
-  const id = ctx.getImageData(0, 0, w, h);
-  const d = id.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    const v = Math.min(255, Math.max(0, (g - 128) * 1.4 + 128));
-    d[i] = d[i + 1] = d[i + 2] = v;
-  }
-  ctx.putImageData(id, 0, 0);
-  return blobToDataUrl(await canvas.convertToBlob({ type: 'image/png' }));
-}
-
-async function dataUrlToBitmap(dataUrl: string): Promise<ImageBitmap> {
-  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return createImageBitmap(new Blob([bytes], { type: 'image/png' }));
 }
 
 async function blobToDataUrl(blob: Blob): Promise<string> {

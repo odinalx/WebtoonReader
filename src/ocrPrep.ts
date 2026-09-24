@@ -19,7 +19,7 @@
 // OffscreenCanvas's ImageData), in Node for the bench, and in unit tests.
 
 export interface RgbaImage {
-  data: Uint8ClampedArray;
+  data: Uint8ClampedArray<ArrayBuffer>;
   width: number;
   height: number;
 }
