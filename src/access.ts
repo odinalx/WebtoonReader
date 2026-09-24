@@ -33,6 +33,11 @@ async function writeCache(state: AccessState): Promise<void> {
   await chrome.storage.local.set({ [CACHE_KEY]: state });
 }
 
+/** Forget the cached verdict, e.g. when the API refuses a scan it allowed. */
+export async function clearAccessCache(): Promise<void> {
+  await chrome.storage.local.remove(CACHE_KEY);
+}
+
 /** Check (with caching) whether the extension is unlocked. */
 export async function getAccess(force = false): Promise<AccessState> {
   const settings = await getSettings();

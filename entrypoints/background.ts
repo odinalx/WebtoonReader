@@ -9,8 +9,8 @@ import { getSettings, hasVoiceCreds } from '../src/settings';
 import { clovaTts } from '../src/clova';
 import { naverWordAudioUrl } from '../src/naver';
 import { sendCardsToAnki } from '../src/anki';
-import { analyzeOnSite, sendCardToSite, sendCardsToSite } from '../src/site';
-import { deckLock, getAccess, lockMessage } from '../src/access';
+import { analyzeOnSite, SiteApiError, sendCardToSite, sendCardsToSite } from '../src/site';
+import { clearAccessCache, deckLock, getAccess, lockMessage } from '../src/access';
 import { SITE_URL } from '../src/config';
 import { prepareForOcr } from '../src/ocrPrep';
 import type { Settings } from '../src/types';
@@ -444,8 +444,9 @@ async function tesseractOcr(preprocessed: string): Promise<string> {
  * OCR stays local: it's free, works offline, and Tesseract handles the crisp
  * rendered text of a webtoon panel well.
  *
- * Empty text short-circuits, and a failed call degrades to showing the
- * recognised text with no analysis, exactly as the local path used to.
+ * Empty text short-circuits. An error the site answered (or a network
+ * failure) is rethrown with its French message; anything else degrades to
+ * showing the recognised text with no analysis.
  */
 async function analyzeText(raw: string): Promise<AnalysisResult> {
   const empty = { text: '', sentenceTranslation: '', tone: '', words: [] };
@@ -459,6 +460,14 @@ async function analyzeText(raw: string): Promise<AnalysisResult> {
     return await analyzeOnSite(siteToken, raw);
   } catch (e) {
     console.error('[Sori] analysis failed:', e);
+    // The site said no (expired plan, rate limit, revoked token, unreachable):
+    // show its French message instead of a silent, unanalysed result.
+    if (e instanceof SiteApiError) {
+      // The cached verdict said "subscribed", the server disagrees: drop the
+      // cache so the popup rechecks and shows the paywall.
+      if (e.code === 'subscription_required' || e.status === 401) await clearAccessCache();
+      throw e;
+    }
     return { ...empty, text: raw };
   }
 }
