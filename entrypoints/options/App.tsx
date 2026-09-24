@@ -58,25 +58,33 @@ export function App() {
 
   return (
     <div className="page">
-      <h1>Sori — Settings</h1>
-      <p className="lead">
-        Sori requires a <strong>subscription</strong>. Connect your account
-        below; captured words are saved to your Sori deck (or to Anki if you prefer).
-      </p>
+      <header className="page-head">
+        <span className="eyebrow">Sori · 소리</span>
+        <h1>Réglages</h1>
+        <p className="lead">
+          Connecte ton compte Sori ci-dessous. Les mots que tu captures vont
+          dans ton deck Sori (ou dans Anki, si tu préfères).
+        </p>
+      </header>
 
       <section>
         <div className="sec-head">
-          <h2>Sori account</h2>
+          <h2>Compte Sori</h2>
           <AccessBadge access={access} checking={checking} />
         </div>
-        <p className="hint">
-          1. Create a free account at{' '}
-          <a href={`${SITE_URL}/login`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}</a>.{' '}
-          2. On <a href={`${SITE_URL}/account`} target="_blank" rel="noreferrer">your account page</a>,
-          create an <em>access token</em>. 3. Paste it here.
-        </p>
+        <ol className="steps hint">
+          <li>
+            Crée un compte gratuit sur{' '}
+            <a href={`${SITE_URL}/login`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}</a>.
+          </li>
+          <li>
+            Sur <a href={`${SITE_URL}/account`} target="_blank" rel="noreferrer">ta page compte</a>,
+            crée un <em>jeton d’accès</em>.
+          </li>
+          <li>Colle-le ici.</li>
+        </ol>
         <label>
-          Access token
+          <span className="field-label">Jeton d’accès</span>
           <input
             type="password"
             placeholder="sori_…"
@@ -85,24 +93,24 @@ export function App() {
           />
         </label>
         <div className="actions">
-          <button className="save" onClick={onSave} disabled={checking}>
-            {checking ? 'Verifying…' : 'Save & verify'}
+          <button className="btn btn-primary" onClick={onSave} disabled={checking}>
+            {checking ? 'Vérification…' : 'Enregistrer et vérifier'}
           </button>
         </div>
         {access && !access.ok && (
           <p className="hint warn-hint">
-            {access.reason === 'no-token' && 'No token yet. Create a free account on the website and paste its token here.'}
-            {access.reason === 'invalid-token' && 'This token was rejected. Create a new one on your account page.'}
-            {access.reason === 'offline' && 'Could not reach the Sori site to verify. Check your connection.'}
+            {access.reason === 'no-token' && 'Aucun jeton pour l’instant. Crée un compte gratuit sur le site et colle ton jeton ici.'}
+            {access.reason === 'invalid-token' && 'Ce jeton a été refusé. Crées-en un nouveau sur ta page compte.'}
+            {access.reason === 'offline' && 'Impossible de joindre le site Sori pour vérifier. Vérifie ta connexion.'}
           </p>
         )}
       </section>
 
       <section>
         <div className="sec-head">
-          <h2>Flashcards</h2>
+          <h2>Cartes</h2>
         </div>
-        <p className="hint">Where should “Add to flashcards” send words?</p>
+        <p className="hint">Où envoyer les mots quand tu cliques sur « Ajouter au deck » ?</p>
         <label className="checkbox">
           <input
             type="radio"
@@ -110,9 +118,11 @@ export function App() {
             checked={settings.flashcardTarget === 'site'}
             onChange={() => update({ flashcardTarget: 'site' })}
           />
-          <strong>Sori website</strong> (default) — cards land in your online deck; study
-          them anywhere at{' '}
-          <a href={`${SITE_URL}/study`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}/study</a>.
+          <span>
+            <strong>Site Sori</strong> (par défaut)<br />
+            Les cartes arrivent dans ton deck en ligne. Révise-les partout sur{' '}
+            <a href={`${SITE_URL}/study`} target="_blank" rel="noreferrer">{SITE_URL.replace(/^https?:\/\//, '')}/study</a>.
+          </span>
         </label>
         <label className="checkbox">
           <input
@@ -121,7 +131,10 @@ export function App() {
             checked={settings.flashcardTarget === 'anki'}
             onChange={() => update({ flashcardTarget: 'anki' })}
           />
-          <strong>Anki desktop</strong> — send cards to Anki via the AnkiConnect add-on.
+          <span>
+            <strong>Anki (ordinateur)</strong><br />
+            Envoie les cartes dans Anki via le module AnkiConnect.
+          </span>
         </label>
 
         {settings.flashcardTarget === 'site' && (
@@ -136,17 +149,16 @@ export function App() {
       {settings.flashcardTarget === 'anki' && (
         <section>
           <div className="sec-head">
-            <h2>Anki setup</h2>
+            <h2>Configuration d’Anki</h2>
             <span className="badge on">AnkiConnect</span>
           </div>
           <p className="hint">
-            Requires desktop Anki running with the free{' '}
+            Anki doit être ouvert sur ton ordinateur avec le module gratuit{' '}
             <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">
               AnkiConnect
-            </a>{' '}
-            add-on. <strong>One-time setup:</strong> in Anki, open{' '}
-            <em>Tools → Add-ons → AnkiConnect → Config</em> and add this extension's
-            origin to <code>webCorsOriginList</code>:
+            </a>. <strong>À faire une seule fois :</strong> dans Anki, ouvre{' '}
+            <em>Outils → Modules → AnkiConnect → Configuration</em> et ajoute l’origine
+            de l’extension à <code>webCorsOriginList</code> :
           </p>
           <pre className="origin-box">
 {`"webCorsOriginList": [
@@ -155,7 +167,7 @@ export function App() {
 ]`}
           </pre>
           <label>
-            AnkiConnect URL
+            <span className="field-label">Adresse d’AnkiConnect</span>
             <input
               type="text"
               placeholder="http://127.0.0.1:8765"
@@ -164,7 +176,7 @@ export function App() {
             />
           </label>
           <label>
-            Deck name
+            <span className="field-label">Nom du deck</span>
             <input
               type="text"
               placeholder="Sori"
@@ -172,8 +184,8 @@ export function App() {
               onChange={(e) => update({ ankiDeck: e.target.value })}
             />
             <span className="field-hint">
-              Cards use a “Korean Reader” note type that the extension creates
-              automatically (Vocab, English, sound, 4 dictionaries, example sentence).
+              Les cartes utilisent un type de note « Korean Reader » que l’extension crée
+              toute seule (mot, traduction, son, 4 dictionnaires, phrase d’exemple).
             </span>
           </label>
           <label className="checkbox">
@@ -182,7 +194,10 @@ export function App() {
               checked={settings.ankiAutoSend}
               onChange={(e) => update({ ankiAutoSend: e.target.checked })}
             />
-            Send each card to Anki immediately (otherwise they wait in a queue you flush with “Send all to Anki”).
+            <span>
+              Envoyer chaque carte à Anki tout de suite (sinon elles attendent dans une file
+              que tu vides avec « Tout envoyer vers Anki »).
+            </span>
           </label>
         </section>
       )}
@@ -190,17 +205,17 @@ export function App() {
       {SHOW_NAVER_CLOUD && (<>
       <section>
         <div className="sec-head">
-          <h2>Clova Voice (pronunciation)</h2>
+          <h2>Clova Voice (prononciation)</h2>
           <span className={hasVoiceCreds(settings) ? 'badge on' : 'badge'}>
-            {hasVoiceCreds(settings) ? 'active' : 'using Google TTS'}
+            {hasVoiceCreds(settings) ? 'active' : 'Google TTS utilisé'}
           </span>
         </div>
         <p className="hint">
-          Naver Cloud → Services → <strong>Clova Voice (Premium)</strong>. Register an
-          application, then copy its <em>API Key ID</em> and <em>API Key</em>.
+          Naver Cloud → Services → <strong>Clova Voice (Premium)</strong>. Enregistre une
+          application, puis copie son <em>API Key ID</em> et son <em>API Key</em>.
         </p>
         <label>
-          API Key ID
+          <span className="field-label">API Key ID</span>
           <input
             type="text"
             placeholder="X-NCP-APIGW-API-KEY-ID"
@@ -209,7 +224,7 @@ export function App() {
           />
         </label>
         <label>
-          API Key
+          <span className="field-label">API Key</span>
           <input
             type="password"
             placeholder="X-NCP-APIGW-API-KEY"
@@ -218,32 +233,32 @@ export function App() {
           />
         </label>
         <label>
-          Voice
+          <span className="field-label">Voix</span>
           <select
             value={settings.voiceSpeaker}
             onChange={(e) => update({ voiceSpeaker: e.target.value })}
           >
-            <option value="nara">nara (female)</option>
-            <option value="nminyoung">nminyoung (female)</option>
-            <option value="nyejin">nyejin (female)</option>
-            <option value="njihun">njihun (male)</option>
-            <option value="njinho">njinho (male)</option>
+            <option value="nara">nara (féminine)</option>
+            <option value="nminyoung">nminyoung (féminine)</option>
+            <option value="nyejin">nyejin (féminine)</option>
+            <option value="njihun">njihun (masculine)</option>
+            <option value="njinho">njinho (masculine)</option>
           </select>
         </label>
       </section>
       </>)}
 
       <div className="actions">
-        <button className="save" onClick={onSave}>Save</button>
-        {saved && <span className="saved-note">Saved ✓</span>}
+        <button className="btn btn-primary" onClick={onSave}>Enregistrer</button>
+        {saved && <span className="saved-note" role="status">Réglages enregistrés</span>}
       </div>
     </div>
   );
 }
 
 function AccessBadge({ access, checking }: { access: AccessView | null; checking: boolean }) {
-  if (checking) return <span className="badge">checking…</span>;
-  if (!access) return <span className="badge">unknown</span>;
+  if (checking) return <span className="badge">vérification…</span>;
+  if (!access) return <span className="badge">inconnu</span>;
   if (access.ok) {
     return (
       <span className="badge on">
@@ -251,13 +266,13 @@ function AccessBadge({ access, checking }: { access: AccessView | null; checking
       </span>
     );
   }
-  return <span className="badge">locked</span>;
+  return <span className="badge locked">verrouillé</span>;
 }
 
 /**
  * Which Sori deck captured words land in.
  *
- * The decks are the site's, so they're fetched rather than typed — a name typed
+ * The decks are the site's, so they're fetched rather than typed: a name typed
  * here would create nothing and file words nowhere. The list reloads whenever
  * the saved token changes, since without a valid token there is nothing to ask.
  */
@@ -296,20 +311,20 @@ function DeckPicker({
     void load();
   }, [load]);
 
-  // A deck deleted on the site would otherwise fail silently — the server falls
+  // A deck deleted on the site would otherwise fail silently: the server falls
   // back to the first deck, and words would quietly pile up somewhere else.
   const missing = Boolean(value) && decks !== null && !decks.some((d) => d.id === value);
 
   return (
     <label>
-      Deck
+      <span className="field-label">Deck</span>
       <select
         value={missing ? '' : value}
         onChange={(e) => onChange(e.target.value)}
         disabled={loading || decks === null}
       >
         <option value="">
-          {decks === null ? 'Connect your account first' : 'First deck (default)'}
+          {decks === null ? 'Connecte d’abord ton compte' : 'Premier deck (par défaut)'}
         </option>
         {(decks ?? []).map((d) => (
           <option key={d.id} value={d.id}>
@@ -319,18 +334,18 @@ function DeckPicker({
       </select>
       <span className="field-hint">
         {error
-          ? `Could not load your decks: ${error}`
+          ? `Impossible de charger tes decks${NB}: ${error}`
           : missing
-            ? 'The deck you picked no longer exists — words go to your first deck until you choose another.'
+            ? 'Le deck choisi n’existe plus. Les mots vont dans ton premier deck jusqu’à ce que tu en choisisses un autre.'
             : (
               <>
-                Create and rename decks on{' '}
+                Crée et renomme tes decks sur{' '}
                 <a href={`${SITE_URL}/deck`} target="_blank" rel="noreferrer">
-                  your deck page
+                  ta page deck
                 </a>
                 .{' '}
                 <button type="button" className="linkish" onClick={() => void load()}>
-                  Reload
+                  Recharger
                 </button>
               </>
             )}
@@ -339,8 +354,10 @@ function DeckPicker({
   );
 }
 
+const NB = '\u00a0';
+
 const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;
 
-// Naver Clova Voice settings are set aside for now — the code stays but the UI
+// Naver Clova Voice settings are set aside for now: the code stays but the UI
 // is hidden. Flip to true to bring the section back.
 const SHOW_NAVER_CLOUD = false;
