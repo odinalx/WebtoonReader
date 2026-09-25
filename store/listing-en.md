@@ -22,7 +22,9 @@ How it works:
 4. Click a word: translation, dictionary form, speech level, example sentence and pronunciation.
 5. "Ajouter au deck": the word joins your spaced-repetition reviews on dokhae.fr.
 
-You can also select Korean text on any page, right-click and choose "Analyser avec Dokhae".
+You can also select Korean text on any page, then right-click and choose "Analyser avec Dokhae", or click "Analyser la sélection" in the extension's window.
+
+Every word you add keeps a link to the page you found it on: from your reviews, one click takes you back to the chapter.
 
 What matters:
 • Text recognition runs on your computer. Only the recognised text is sent to Dokhae for analysis.
@@ -65,11 +67,12 @@ Data collected:
 - **Personally identifiable information**: yes, the Dokhae account email, received from the site to show which account is connected.
 - **Authentication information**: yes, the Dokhae access token (`sori_…`), stored locally and only ever sent to dokhae.fr.
 - **Website content**: yes, the Korean text recognised in the framed area (or the selected text) is sent to dokhae.fr for analysis. Words the user listens to are sent to the Naver dictionary or Google for pronunciation.
-- Health, financial, personal communications, location, web history, user activity: **no**.
+- **Web history**: yes, to be safe: when the user adds a word to their deck, the address of the page it came from is saved with the card, so they can go back to it. Nothing is sent until they add a word.
+- Health, financial, personal communications, location, user activity: **no**.
 
 Notes for the free-text fields:
 - The capture of the framed area is processed locally (on-device text recognition); the image never leaves the device.
-- Words added to the deck (word, translation, example sentence, source site name) are stored in the user's Dokhae account.
+- Words added to the deck (word, translation, example sentence, address of the source page) are stored in the user's Dokhae account, where the user can edit or clear that address.
 - No data is sold, used for advertising, or used to determine creditworthiness.
 
 Certifications to tick:

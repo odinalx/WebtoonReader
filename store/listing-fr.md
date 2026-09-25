@@ -19,7 +19,9 @@ Comment ça marche :
 4. Touche un mot : traduction, forme du dictionnaire, registre, phrase d'exemple et prononciation.
 5. « Ajouter au deck » : le mot rejoint tes révisions sur dokhae.fr (répétition espacée).
 
-Tu peux aussi sélectionner du texte coréen sur n'importe quelle page, faire un clic droit et choisir « Analyser avec Dokhae ».
+Tu peux aussi sélectionner du texte coréen sur n'importe quelle page, puis faire un clic droit et choisir « Analyser avec Dokhae », ou cliquer sur « Analyser la sélection » dans la fenêtre de l'extension.
+
+Chaque mot ajouté garde un lien vers la page où tu l'as trouvé : dans tes révisions, tu retrouves le chapitre d'un clic.
 
 Ce qui compte pour toi :
 • La lecture de l'image se fait sur ton ordinateur. Seul le texte reconnu part vers Dokhae pour l'analyse.
@@ -66,11 +68,12 @@ Données collectées (cases à cocher) :
 - **Informations permettant d'identifier personnellement l'utilisateur** : oui, l'adresse e-mail du compte Dokhae, reçue du site pour afficher le compte connecté.
 - **Informations d'authentification** : oui, le jeton d'accès Dokhae (`sori_…`), stocké localement et envoyé uniquement à dokhae.fr.
 - **Contenu du site Web** : oui, le texte coréen reconnu dans la zone choisie (ou le texte sélectionné) est envoyé à dokhae.fr pour l'analyse. Les mots écoutés sont envoyés au dictionnaire Naver ou à Google pour la prononciation.
-- Santé, finances, communications personnelles, localisation, historique de navigation, activité de l'utilisateur : **non**.
+- **Historique Web** : oui, par prudence : quand l'utilisateur ajoute un mot à son deck, l'adresse de la page où il l'a trouvé est enregistrée avec la carte, pour qu'il puisse y revenir. Rien n'est envoyé tant qu'il n'ajoute pas de mot.
+- Santé, finances, communications personnelles, localisation, activité de l'utilisateur : **non**.
 
 Précisions à reprendre dans les champs libres :
 - La capture de la zone choisie est traitée localement (reconnaissance de texte sur l'ordinateur) : l'image ne quitte pas l'appareil.
-- Les mots ajoutés au deck (mot, traduction, phrase d'exemple, nom du site d'origine) sont enregistrés sur le compte Dokhae de l'utilisateur.
+- Les mots ajoutés au deck (mot, traduction, phrase d'exemple, adresse de la page d'origine) sont enregistrés sur le compte Dokhae de l'utilisateur, qui peut modifier ou effacer cette adresse.
 - Aucune donnée n'est vendue, ni utilisée pour de la publicité, ni pour évaluer la solvabilité.
 
 Attestations à cocher :
