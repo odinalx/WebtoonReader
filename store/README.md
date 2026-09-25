@@ -31,11 +31,19 @@ For an update, bump `version` in both `wxt.config.ts` and `package.json`.
 
 ## Screenshots
 
-The captures come from the real extension against the local site, through
-the site's `scripts/screenshots/shoot.mjs` (build with
-`WXT_SITE_URL=http://localhost:3000 SORI_SCREENSHOTS=1 npm run build`,
-then run it with `SORI_DEMO=real-panel.html SORI_CHIP=어떻게`). They were
-then laid out at 1280 × 800 on the cream background with a French caption.
+`store/shoot.mjs` regenerates the five screenshots and the promo tile: it
+drives the real extension on Odin's webtoon page, then lays each frame out at
+1280 × 800 (Dok's mark, title, subtitle) with the site's fonts. With the
+local site running:
+
+```sh
+WXT_SITE_URL=http://localhost:3000 SORI_SCREENSHOTS=1 npm run build
+SORI_TOKEN=sori_… NODE_PATH=<dir with playwright-core> node store/shoot.mjs
+WXT_SITE_URL=http://localhost:3000 npm run build   # never ship the screenshot build
+```
+
+Titles and subtitles live in the script. The site's own product shots come
+from its `scripts/screenshots/shoot.mjs`.
 
 ## By hand in the dashboard
 
