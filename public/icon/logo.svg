@@ -1,7 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Dokhae's mark: a blue tile with a D from Bricolage Grotesque Bold, drawn
-       as a path so it looks the same without the font installed. The same
-       file is the site's favicon and the extension's icon source. -->
+  <!-- Dokhae's mark: Dok's head on the brand-blue tile. Drawn by hand after the
+       mascot sheet (brands/dokhae/mascot in Contenu_auto) so it stays crisp and
+       light at 16 px. The same file is the site's favicon and the extension icon. -->
   <rect width="64" height="64" rx="14" fill="#2f4bd8"/>
-  <path fill="#f4f1e9" d="M20.67 49V42.97H30.56Q33.44 42.97 35.35 41.71Q37.25 40.45 38.23 38.03Q39.21 35.61 39.21 32.1Q39.21 29.22 38.59 27.13Q37.98 25.05 36.77 23.71Q35.55 22.37 33.73 21.7Q31.9 21.03 29.42 21.03H20.67V15H29.17Q35.35 15 39.26 17.01Q43.18 19.02 45.03 22.75Q46.89 26.49 46.89 31.69Q46.89 35.61 45.96 38.49Q45.03 41.38 43.46 43.38Q41.89 45.39 39.83 46.63Q37.77 47.87 35.45 48.43Q33.13 49 30.76 49ZM17.11 49V15H24.53V49Z"/>
+  <g transform="translate(6.68 11.90) scale(0.08442)">
+<g stroke="#14141a" stroke-width="13" stroke-linejoin="round" stroke-linecap="round">
+    <path fill="#fbf8f1" d="M132 214 C 80 218 18 240 10 272 C 4 300 34 324 80 330 C 100 332 116 330 124 326 Z"/>
+    <path fill="#fbf8f1" d="M468 214 C 520 218 582 240 590 272 C 596 300 566 324 520 330 C 500 332 484 330 476 326 Z"/>
+    <path fill="#fbf8f1" d="M300 116 C 430 116 510 206 526 318 C 542 434 474 490 300 490 C 126 490 58 434 74 318 C 90 206 170 116 300 116 Z"/>
+    <path fill="#2f4bd8" d="M287 20 C 294 5 306 5 313 20 L 368 132 C 376 152 344 164 300 164 C 256 164 224 152 232 132 Z"/>
+    <path fill="none" stroke-width="10" d="M250 92 C 280 106 320 106 350 90"/>
+    <path fill="none" stroke-width="19" d="M176 246 C 198 252 222 262 240 276"/>
+    <path fill="none" stroke-width="19" d="M424 246 C 402 252 378 262 360 276"/>
+    <path fill="none" stroke-width="13" d="M248 346 C 256 366 278 368 290 352 C 300 340 312 342 320 354 C 332 370 350 364 356 346"/>
+    <path fill="#ffffff" stroke-width="8" d="M327 360 L 347 353 L 341 384 Z"/>
+  </g>
+  <ellipse cx="206" cy="306" rx="42" ry="45" fill="#14141a"/>
+  <ellipse cx="394" cy="306" rx="42" ry="45" fill="#14141a"/>
+  <circle cx="221" cy="291" r="11.5" fill="#fff"/>
+  <circle cx="379" cy="291" r="11.5" fill="#fff"/>
+  <ellipse cx="150" cy="354" rx="38" ry="29" fill="#fdbab3"/>
+  <ellipse cx="450" cy="354" rx="38" ry="29" fill="#fdbab3"/>
+  </g>
 </svg>
