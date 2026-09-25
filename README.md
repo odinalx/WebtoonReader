@@ -1,5 +1,7 @@
 # Dokhae (독해), browser extension
 
+> **Dokhae : apprends le coréen en lisant tes webtoons préférés, ou même tes romans.**
+
 A Chrome/Chromium extension (Manifest V3, version 1.0.0) for reading Korean
 webtoons. Drag a box over a speech bubble and it:
 
