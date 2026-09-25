@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ExtensionMessage } from '../../src/types';
 import { SITE_URL } from '../../src/config';
 import { CONNECT_PATH } from '../../src/connect';
+import { koreanSelection } from '../../src/hangul';
 
-type Status = 'idle' | 'activating' | 'error';
+type Status = 'idle' | 'activating' | 'analyzing' | 'error';
 
 interface AccessView {
   ok: boolean;
@@ -38,6 +39,34 @@ function ScanIcon() {
       <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
     </svg>
   );
+}
+
+function TextIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7V5h16v2M9 19h6M12 5v14" />
+    </svg>
+  );
+}
+
+/**
+ * The Korean selected in the active tab, if any. Opening the popup grants
+ * activeTab, which is all executeScript needs for the tab's own frame; pages
+ * Chrome protects (chrome://, the Web Store, PDFs) just give no selection.
+ */
+async function readSelection(): Promise<{ tabId: number; text: string } | null> {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return null;
+    const [frame] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.getSelection()?.toString() ?? '',
+    });
+    const text = koreanSelection(frame?.result as string | undefined);
+    return text ? { tabId: tab.id, text } : null;
+  } catch {
+    return null;
+  }
 }
 
 function Spinner() {
@@ -76,6 +105,11 @@ export function App() {
     void check();
   }, [check]);
 
+  const [selection, setSelection] = useState<{ tabId: number; text: string } | null>(null);
+  useEffect(() => {
+    void readSelection().then(setSelection);
+  }, []);
+
   const open = (path: string) => {
     void browser.tabs.create({ url: `${SITE_URL}${path}` });
     window.close();
@@ -112,7 +146,33 @@ export function App() {
     }
   };
 
+  const analyzeSelection = async () => {
+    if (!selection) return;
+    setStatus('analyzing');
+    setError('');
+    try {
+      const resp = (await browser.runtime.sendMessage({
+        type: 'ANALYZE_SELECTION_IN_TAB',
+        tabId: selection.tabId,
+        text: selection.text,
+      } satisfies ExtensionMessage)) as ExtensionMessage | undefined;
+      if (resp?.type === 'START_SCAN_DONE' && resp.ok) {
+        window.close();
+        return;
+      }
+      throw new Error(
+        resp?.type === 'START_SCAN_DONE' && resp.message
+          ? resp.message
+          : "L'extension ne répond pas. Réessaie.",
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStatus('error');
+    }
+  };
+
   const reason = access && !access.ok ? access.reason : undefined;
+  const busy = status === 'activating' || status === 'analyzing';
 
   return (
     <div className="app">
@@ -174,16 +234,34 @@ export function App() {
         </section>
       ) : (
         <>
+          {/* Text already selected is the clearer intent: it goes first. */}
+          {selection ? (
+            <div className="selection">
+              <button
+                className="btn btn-primary btn-big"
+                onClick={analyzeSelection}
+                disabled={busy}
+              >
+                {status === 'analyzing' ? <><Spinner />Ouverture…</> : <><TextIcon />Analyser la sélection</>}
+              </button>
+              <p className="selection-text" lang="ko" title={selection.text}>
+                «&nbsp;{selection.text}&nbsp;»
+              </p>
+            </div>
+          ) : null}
           <button
-            className="btn btn-primary btn-big"
+            className={'btn ' + (selection ? 'btn-quiet' : 'btn-primary btn-big')}
             onClick={startScan}
-            disabled={status === 'activating'}
+            disabled={busy}
           >
             {status === 'activating' ? <><Spinner />Ouverture…</> : <><ScanIcon />Scanner une bulle</>}
           </button>
-          <p className="or">
-            ou sélectionne du coréen, clic droit, «&nbsp;Analyser avec Dokhae&nbsp;»
-          </p>
+          {selection ? null : (
+            <p className="or">
+              ou sélectionne du coréen dans la page, puis rouvre Dokhae ou fais clic
+              droit, «&nbsp;Analyser avec Dokhae&nbsp;»
+            </p>
+          )}
 
           {status === 'error' && <div className="error" role="alert">{error}</div>}
 
