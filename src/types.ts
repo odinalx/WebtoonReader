@@ -54,6 +54,7 @@ export interface AnkiCardDraft {
   sentence: string;            // the scanned sentence (example)
   sentenceTranslation: string; // its translation
   source?: string;             // where the word was captured (page hostname)
+  sourceUrl?: string;          // the page itself, linked from the site
   addedAt: number;             // timestamp
 }
 
