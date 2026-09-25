@@ -125,16 +125,13 @@ await ctx.close()
 
 /* ------------------------------------------------------------ layouts */
 
-const HORN = `<svg viewBox="0 0 22 24" class="horn" aria-hidden="true"><path d="M9.6 1.6c.7-1.1 2.1-1.1 2.8 0l7.3 16.5c1 2.6-3.4 4.1-8.7 4.1s-9.7-1.5-8.7-4.1Z" fill="#2f4bd8" stroke="#16141a" stroke-width="2.2" stroke-linejoin="round"/><path d="M5.2 11.8c3.8 1.6 7.8 1.6 11.6 0" fill="none" stroke="#16141a" stroke-width="1.9" stroke-linecap="round"/></svg>`
-const NAME = `<span class="name"><span class="d">D${HORN}</span>okhae</span>`
+const NAME = `<span class="name">Dokhae</span>`
 const CSS = `
   @font-face { font-family: Bricolage; src: url(/fonts/bricolage-grotesque-latin-v1.woff2) format("woff2"); font-weight: 200 800; }
   @font-face { font-family: Pretendard; src: url(/fonts/pretendard-sori-v1.woff2) format("woff2"); font-weight: 100 900; }
   * { box-sizing: border-box; margin: 0; }
   body { background: #f4f1e9; color: #16141a; font-family: Pretendard, sans-serif; overflow: hidden; }
   .name { font-family: Bricolage; font-weight: 700; letter-spacing: -0.02em; }
-  .d { position: relative; display: inline-block; }
-  .horn { position: absolute; top: -0.04em; left: 0.22em; height: 0.46em; width: 0.42em; transform: rotate(22deg); }
   .brand { position: absolute; top: 20px; left: 30px; display: flex; align-items: center; gap: 8px; font-size: 21px; }
   .brand img { height: 1.5em; }
   h1 { font-family: Bricolage; font-weight: 700; letter-spacing: -0.02em; font-size: 42px; text-align: center; padding-top: 52px; }
