@@ -354,7 +354,7 @@ function createPanel(): ShadowRoot {
   panel.setAttribute('aria-label', 'Dokhae');
   panel.innerHTML = `
     <div class="header">
-      <span class="title">${logoSvg(18, 'title-mark')}<span>Dokhae</span></span>
+      <span class="title">${logoSvg(22, 'title-mark')}<span>Dokhae</span></span>
       <button class="close icon-btn" title="Fermer (Échap)" aria-label="Fermer">${ICON.close}</button>
     </div>
     <div class="body" aria-live="polite"><div class="status">Capture en cours…</div></div>

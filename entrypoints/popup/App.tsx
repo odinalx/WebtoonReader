@@ -20,9 +20,9 @@ const PLAN_NAMES: Record<string, string> = {
   lifetime: 'à vie',
 };
 
-/** The mark: Dok's head on the blue tile (public/icon/logo.svg, same file as the site's favicon). */
+/** The mark: Dok's head (public/icon/logo.svg, same file as the site's favicon). */
 function Logo() {
-  return <img src="/icon/logo.svg" width={32} height={32} alt="" aria-hidden="true" />;
+  return <img src="/icon/logo.svg" width={34} height={34} alt="" aria-hidden="true" />;
 }
 
 function ScanIcon() {
