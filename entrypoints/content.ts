@@ -727,6 +727,8 @@ function showWordPopover(shadow: ShadowRoot, anchor: HTMLElement, info: WordInfo
       sentence: currentAnalysis?.text || '',
       sentenceTranslation: currentAnalysis?.sentenceTranslation || '',
       source: location.hostname,
+      // The exact page, so the site can link the word back to its chapter.
+      sourceUrl: location.href,
     };
     let resp: ExtensionMessage | undefined;
     try {

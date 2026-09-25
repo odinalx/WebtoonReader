@@ -136,6 +136,12 @@ function toWordInput(card: AnkiCardDraft) {
     example: card.sentence,
     exampleTranslation: card.sentenceTranslation,
     source: card.source || 'Dokhae Extension',
+    // Only web pages: a local file or an extension page is no link to share.
+    // Cut short, an address is a broken link: past the site's 500-character
+    // limit it is simply left out.
+    ...(card.sourceUrl && /^https?:\/\//.test(card.sourceUrl) && card.sourceUrl.length <= 500
+      ? { sourceUrl: card.sourceUrl }
+      : {}),
   };
 }
 
