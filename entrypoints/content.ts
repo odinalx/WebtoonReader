@@ -1,5 +1,6 @@
 import type { ExtensionMessage, SelectionRect, AnalysisResult, WordInfo } from '../src/types';
 import { romanize } from '../src/romanize';
+import { HANGUL_RE } from '../src/hangul';
 import { phraseParts } from '../src/phrase';
 import { SITE_URL } from '../src/config';
 import { CONNECT_PATH } from '../src/connect';
@@ -107,8 +108,6 @@ function posLabel(pos: string): string {
   return POS_LABELS[pos] ?? pos;
 }
 
-// Hangul syllables + compatibility/conjoining Jamo.
-const HANGUL_RE = /[가-힣㄰-㆏ᄀ-ᇿ]/;
 
 // ---------------------------------------------------------------------------
 // Capture overlay

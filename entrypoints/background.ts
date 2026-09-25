@@ -90,11 +90,16 @@ export default defineBackground(() => {
     );
   });
 
-  // --- Popup "Scanner": inject into the active tab, open the overlay --------
+  // --- Popup "Scanner" or "Analyser la sélection": inject into the active
+  // tab, then open the scan overlay or the panel on the selected text ------
   onMessage((msg: unknown, _sender, sendResponse): true | undefined => {
     const message = msg as ExtensionMessage;
-    if (message.type !== 'START_SCAN') return undefined;
-    sendToTab(message.tabId, { type: 'ACTIVATE_SCAN' })
+    if (message.type !== 'START_SCAN' && message.type !== 'ANALYZE_SELECTION_IN_TAB') return undefined;
+    const toTab: ExtensionMessage =
+      message.type === 'START_SCAN'
+        ? { type: 'ACTIVATE_SCAN' }
+        : { type: 'ANALYZE_SELECTION', text: message.text };
+    sendToTab(message.tabId, toTab)
       .then(() => sendResponse({ type: 'START_SCAN_DONE', ok: true } satisfies ExtensionMessage))
       .catch((e) => {
         console.warn('[Dokhae] could not start a scan in this tab:', e);

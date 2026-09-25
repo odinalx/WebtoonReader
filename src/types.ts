@@ -105,6 +105,14 @@ export interface StartScan {
   type: 'START_SCAN';
   tabId: number;
 }
+// popup -> background: open the panel in this tab on the text selected
+// there (read by the popup), the same path as the right-click entry.
+// Answered with StartScanDone.
+export interface AnalyzeSelectionInTab {
+  type: 'ANALYZE_SELECTION_IN_TAB';
+  tabId: number;
+  text: string;
+}
 export interface StartScanDone {
   type: 'START_SCAN_DONE';
   ok: boolean;
@@ -271,6 +279,7 @@ export type ExtensionMessage =
   | AccessInfo
   | ActivateScan
   | StartScan
+  | AnalyzeSelectionInTab
   | StartScanDone
   | Ping
   | Pong
