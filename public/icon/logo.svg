@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -60 628 628">
   <!-- Dokhae's favicon: Dok's head alone, with bolder lines than the full
-       drawing (public/mascot/dok-tete.svg) so the face reads at 16 px. -->
+       drawing (brands/dokhae/logo.svg) so the face reads at 16 px. -->
   <g stroke="#14141a" stroke-width="24" stroke-linejoin="round" stroke-linecap="round">
     <path fill="#fbf8f1" d="M132 214 C 80 218 18 240 10 272 C 4 300 34 324 80 330 C 100 332 116 330 124 326 Z"/>
     <path fill="#fbf8f1" d="M468 214 C 520 218 582 240 590 272 C 596 300 566 324 520 330 C 500 332 484 330 476 326 Z"/>
@@ -9,8 +9,8 @@
     <path fill="none" stroke-width="16" d="M250 92 C 280 106 320 106 350 90"/>
     <path fill="none" stroke-width="30" d="M176 246 C 198 252 222 262 240 276"/>
     <path fill="none" stroke-width="30" d="M424 246 C 402 252 378 262 360 276"/>
-    <path fill="none" stroke-width="20" d="M248 346 C 256 366 278 368 290 352 C 300 340 312 342 320 354 C 332 370 350 364 356 346"/>
-    
+    <path fill="none" stroke-width="20" d="M248 362 C 256 382 278 384 290 368 C 300 356 312 358 320 370 C 332 386 350 380 356 362"/>
+    />
   </g>
   <ellipse cx="206" cy="306" rx="42" ry="45" fill="#14141a"/>
   <ellipse cx="394" cy="306" rx="42" ry="45" fill="#14141a"/>
