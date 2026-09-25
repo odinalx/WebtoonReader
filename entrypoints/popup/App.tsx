@@ -275,7 +275,7 @@ export function App() {
             {checking && !access ? (
               <><Spinner />Vérification du compte…</>
             ) : access?.email ? (
-              <><span className="dot-ok" aria-hidden="true" />{access.email}</>
+              <><span className="dot-ok" aria-hidden="true" /><span className="account-email">{access.email}</span></>
             ) : null}
           </p>
         </>

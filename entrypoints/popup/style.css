@@ -166,6 +166,8 @@ body {
   min-height: 18px; font-size: 12px; color: var(--wkr-muted);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
+/* The flex line can't ellipsize a bare text node: the address needs its own box. */
+.account-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dot-ok { width: 7px; height: 7px; border-radius: 50%; background: var(--wkr-celadon); flex: none; }
 
 .spinner {
