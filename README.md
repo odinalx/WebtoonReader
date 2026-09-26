@@ -14,7 +14,7 @@ webtoons. Drag a box over a speech bubble and it:
   if you prefer, sends them to Anki).
 
 The interface is in French. It is the browser client of the
-[Dokhae website](../WebtoonReader_Websites), which also serves the mobile app.
+[Dokhae website](../site), which also serves the mobile app.
 
 > **Requires a Dokhae subscription.** There is no free tier. The extension
 > checks its account token with `GET /api/me` and stays locked until the

@@ -6,7 +6,7 @@
  * title, subtitle, framed capture) is an HTML page rendered by Chromium with
  * the site's fonts, so a new logo or wording is one run away.
  *
- *   (cd ../WebtoonReader_Websites && docker compose up -d)           # site on :3000
+ *   (cd ../site && docker compose up -d)           # site on :3000
  *   WXT_SITE_URL=http://localhost:3000 SORI_SCREENSHOTS=1 npm run build
  *   SORI_TOKEN=sori_… NODE_PATH=<dir with playwright-core> node store/shoot.mjs
  *
@@ -26,7 +26,7 @@ const { chromium } = require("playwright-core")
 
 const here = dirname(fileURLToPath(import.meta.url))
 const ext = resolve(here, "../.output/chrome-mv3")
-const site = resolve(here, "../../WebtoonReader_Websites")
+const site = resolve(here, "../../site")
 const out = join(here, "assets")
 const raw = await mkdtemp(join(tmpdir(), "dokhae-store-"))
 const TOKEN = process.env.SORI_TOKEN
